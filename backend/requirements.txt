@@ -1,0 +1,32 @@
+# --- core web framework ---
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+sqlalchemy==2.0.35
+pydantic==2.9.2
+pydantic-settings==2.6.1
+python-multipart==0.0.9
+python-dotenv==1.0.1
+requests==2.32.3
+
+# --- LLM providers ---
+openai>=1.50.0
+
+# --- news digest: scraper + daily scheduler ---
+beautifulsoup4==4.12.3
+apscheduler==3.10.4
+
+# --- deep agent (LangGraph-based, NOT plain single-turn LangChain) ---
+# these move fast, so versions are intentionally left unpinned - if
+# something breaks, check each package's changelog for breaking API changes
+langgraph
+deepagents
+langchain-core
+langchain-groq
+langchain-openai
+
+# --- agent tools ---
+ddgs           # key-less web search fallback (DuckDuckGo)
+tavily-python  # optional, better web search if TAVILY_API_KEY is set
+
+# --- observability: token/cost tracking (optional, see LANGFUSE_* in .env) ---
+langfuse>=3.0.0

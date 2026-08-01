@@ -1,0 +1,9 @@
+{
+  "name": "knowledge-chatbot-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Static Vue-via-CDN frontend for the Knowledge Chatbot backend. No build tooling/dependencies - build.js just writes the API_BASE_URL env var into a config file.",
+  "scripts": {
+    "build": "node build.js"
+  }
+}

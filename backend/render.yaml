@@ -1,0 +1,64 @@
+# Render Blueprint - https://render.com/docs/blueprint-spec
+#
+# Either:
+#   (a) push this repo, then in the Render dashboard "New +" -> "Blueprint",
+#       point it at this repo with "backend" as the root directory, or
+#   (b) just create a Web Service manually and copy the build/start commands
+#       below into its settings.
+#
+# Either way, set the env vars under "envVars" for real in the Render
+# dashboard (this file intentionally doesn't commit secrets).
+
+services:
+  - type: web
+    name: knowledge-chatbot-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # Render's free plan filesystem is EPHEMERAL - the SQLite file (data.db)
+    # gets wiped on every redeploy/restart. If you're keeping this running
+    # long-term, either upgrade and add a persistent disk (uncomment below
+    # and change DATABASE_URL to point at the mounted path), or migrate to
+    # a managed Postgres instance instead.
+    # disk:
+    #   name: data
+    #   mountPath: /var/data
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: GROQ_SUMMARIZE_MODEL
+        value: llama-3.1-8b-instant
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5-mini
+      - key: LLM_PROVIDER
+        value: groq
+      - key: AGENT_MODEL_PROVIDER
+        value: groq
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: LANGFUSE_PUBLIC_KEY
+        sync: false
+      - key: LANGFUSE_SECRET_KEY
+        sync: false
+      - key: LANGFUSE_HOST
+        value: https://cloud.langfuse.com
+      - key: DATABASE_URL
+        value: sqlite:///./data.db
+      - key: SESSION_TIMEOUT_MINUTES
+        value: "1440"
+      - key: MEMORY_RECENT_WINDOW
+        value: "12"
+      - key: MEMORY_COMPACT_TRIGGER
+        value: "20"
+      - key: LINE_CHANNEL_SECRET
+        sync: false
+      - key: LINE_CHANNEL_ACCESS_TOKEN
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        value: "*"  # tighten to your Vercel URL once you have it, e.g. https://your-app.vercel.app
