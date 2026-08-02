@@ -1,12 +1,21 @@
 const { ref, nextTick, watch } = window.Vue;
 import { store } from "../store.js";
 import { renderMarkdown } from "../markdown.js";
+import { icons } from "../icons.js";
+import CompareModelsDrawer from "./CompareModelsDrawer.js";
 
 export default {
+  components: { CompareModelsDrawer },
   setup() {
     const draft = ref("");
     const chatWindow = ref(null);
     const composing = ref(false);
+    const showCompare = ref(false);
+
+    async function onModelChange(modelId) {
+      if (!store.currentSessionId || !modelId) return;
+      await store.switchModel(store.currentSessionId, modelId);
+    }
 
     async function scrollDown() {
       await nextTick();
@@ -54,12 +63,23 @@ export default {
     }
 
     return {
-      store, draft, chatWindow, onKeydown, onCompositionStart, onCompositionEnd, send, renderMarkdown,
-      fmtTokens, fmtCost,
+      store, icons, draft, chatWindow, onKeydown, onCompositionStart, onCompositionEnd, send, renderMarkdown,
+      fmtTokens, fmtCost, showCompare, onModelChange,
     };
   },
   template: `
   <div class="main-panel chat-panel">
+    <div class="chat-toolbar" v-if="store.currentSession">
+      <span class="mode-badge" :class="{ agent: store.currentSession.agent_mode }"
+            :title="store.currentSession.agent_mode ? 'Deep agent: full history + web search / wiki tools' : 'Normal chat: single-turn, no tools. Type /agent to switch.'">
+        <span class="mode-badge-icon" v-html="store.currentSession.agent_mode ? icons.bot : icons.chat"></span>
+        {{ store.currentSession.agent_mode ? 'Deep Agent' : 'Normal' }}
+      </span>
+      <select class="model-select" :value="store.currentSession.model" @change="onModelChange($event.target.value)">
+        <option v-for="m in store.models" :key="m.id" :value="m.id">{{ m.recommended ? '★ ' : '' }}{{ m.name }}</option>
+      </select>
+      <button class="icon-btn compare-btn" title="Compare models" @click="showCompare = true" v-html="icons.compare"></button>
+    </div>
     <div class="chat-window" ref="chatWindow">
       <div v-if="!store.currentSessionId" class="empty-state">Select or start a conversation</div>
       <div v-for="m in store.messages" :key="m.id" class="msg" :class="m.role">
@@ -81,6 +101,10 @@ export default {
         <span v-if="store.sending" class="spinner"></span>{{ store.sending ? ' Sending…' : 'Send' }}
       </button>
     </div>
+    <CompareModelsDrawer v-if="showCompare && store.currentSession"
+                          :sessionId="store.currentSessionId"
+                          :activeModel="store.currentSession.model"
+                          @close="showCompare = false" />
   </div>
   `,
 };

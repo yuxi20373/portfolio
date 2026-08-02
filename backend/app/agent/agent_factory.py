@@ -8,6 +8,11 @@ the SQL database (ChatMessage / ChatSession.memory_summary) is the single
 source of truth for conversation history, since the rest of the app
 (calendar view, wiki summarizer, session rename/delete, etc.) already reads
 from it. Each turn is invoked with a freshly-built message list instead.
+
+Each chat session can override which OpenAI model it uses (see
+app/agent/model_catalog.py and ChatSession.model_name) - so both the agent
+and the chat model itself are cached per model name instead of as a single
+global singleton.
 """
 
 from pathlib import Path
@@ -26,39 +31,44 @@ from .tools.wiki_manage import update_wiki
 # hallucinating malformed tool-call syntax.
 SKILLS_DIR = Path(__file__).resolve().parent / "skills"
 
-_agent = None
+_agents = {}
 
 
-def _build_chat_model():
+def build_chat_model(model_name: str = None):
+    """Build the plain LangChain chat model for AGENT_MODEL_PROVIDER. Shared
+    by the deep agent (below) and by the default, non-agent chat path
+    (app/agent/simple_chat.py), so both talk to the same configured model.
+    `model_name` overrides settings.openai_model (ignored for groq, which
+    isn't part of the user-facing model catalog/switcher)."""
     if settings.agent_model_provider == "openai":
         from langchain_openai import ChatOpenAI
 
-        return ChatOpenAI(model=settings.openai_model, api_key=settings.openai_api_key)
+        return ChatOpenAI(model=model_name or settings.openai_model, api_key=settings.openai_api_key)
 
     from langchain_groq import ChatGroq
 
     return ChatGroq(model=settings.groq_model, api_key=settings.groq_api_key)
 
 
-def get_agent():
-    """Lazily build and cache the deep agent instance (model init happens
-    once, on first use, not at import time)."""
-    global _agent
-    if _agent is None:
+def get_agent(model_name: str = None):
+    """Lazily build and cache one deep agent instance per model name (model
+    init happens once per model, on first use, not at import time)."""
+    key = model_name or "__default__"
+    if key not in _agents:
         kwargs = dict(
             tools=[web_search, update_wiki],
             system_prompt=AGENT_INSTRUCTIONS,
-            model=_build_chat_model(),
+            model=build_chat_model(model_name),
         )
         if SKILLS_DIR.exists():
             kwargs["skills"] = [str(SKILLS_DIR)]
-        _agent = create_deep_agent(**kwargs)
-    return _agent
+        _agents[key] = create_deep_agent(**kwargs)
+    return _agents[key]
 
 
-def default_model_name() -> str:
+def default_model_name(model_name: str = None) -> str:
     """The model name to attribute a turn's usage/cost to when the provider
     doesn't report a model name back on the message itself."""
     if settings.agent_model_provider == "openai":
-        return settings.openai_model
+        return model_name or settings.openai_model
     return settings.groq_model

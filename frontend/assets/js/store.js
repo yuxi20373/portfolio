@@ -20,6 +20,7 @@ export const store = reactive({
   messages: [],
   sending: false,
   loadingMessages: false,
+  models: [], // catalog from GET /api/models, recommended one first (see model_catalog.py)
 
   // sidebar filters (conversations)
   dateFilter: null, // "YYYY-MM-DD" | null
@@ -48,6 +49,10 @@ export const store = reactive({
   newsCurrentArticle: null,
   newsArticleLoading: false,
   newsArticleSiblings: [], // ids of the same day's articles, for detail-view prev/next
+
+  get currentSession() {
+    return this.sessions.find((s) => s.id === this.currentSessionId) || null;
+  },
 
   get visibleSessions() {
     let list = this.sessions;
@@ -97,6 +102,15 @@ export const store = reactive({
 
   async renameSession(id, title) {
     await api.patch(`/api/sessions/${id}`, { title });
+    await this.loadSessions();
+  },
+
+  async loadModels() {
+    this.models = await api.get("/api/models");
+  },
+
+  async switchModel(id, modelId) {
+    await api.patch(`/api/sessions/${id}`, { model: modelId });
     await this.loadSessions();
   },
 

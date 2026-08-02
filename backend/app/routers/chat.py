@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from .. import models
 from ..database import get_db
+from ..agent import model_catalog
 from ..schemas.chat import SessionCreate, SessionUpdate, SessionOut, MessageOut, ChatRequest
 from ..services.chat.chat_service import get_or_create_session, process_chat_message
 
@@ -37,14 +38,22 @@ def get_messages(session_id: int, db: DBSession = Depends(get_db)):
 
 
 @router.patch("/{session_id}", response_model=SessionOut)
-def rename_session(session_id: int, payload: SessionUpdate, db: DBSession = Depends(get_db)):
+def update_session(session_id: int, payload: SessionUpdate, db: DBSession = Depends(get_db)):
     s = db.query(models.ChatSession).get(session_id)
     if not s:
         raise HTTPException(404, "session not found")
-    title = payload.title.strip()
-    if not title:
-        raise HTTPException(400, "title cannot be empty")
-    s.title = title
+
+    if payload.title is not None:
+        title = payload.title.strip()
+        if not title:
+            raise HTTPException(400, "title cannot be empty")
+        s.title = title
+
+    if payload.model is not None:
+        if not model_catalog.is_valid_model(payload.model):
+            raise HTTPException(400, "unknown model")
+        s.model_name = payload.model
+
     db.commit()
     db.refresh(s)
     return s

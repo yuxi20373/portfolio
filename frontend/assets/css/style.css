@@ -389,6 +389,46 @@ html, body {
 /* Chat */
 
 .chat-panel { height: 100%; }
+
+.chat-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--white);
+  flex-shrink: 0;
+}
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--text-muted);
+  background: var(--sidebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+.mode-badge.agent { color: var(--accent-hover); background: var(--accent-soft); border-color: transparent; }
+.mode-badge-icon { display: flex; }
+.mode-badge-icon svg { width: 13px; height: 13px; }
+.model-select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--white);
+  color: var(--text);
+  font-size: 12.5px;
+  max-width: 220px;
+}
+.model-select:focus { outline: none; border-color: var(--accent); }
+.compare-btn { width: 30px; height: 30px; }
+.compare-btn svg { width: 15px; height: 15px; }
+
 .chat-window { flex: 1; overflow-y: auto; padding: 24px; }
 .msg {
   max-width: 70%;
@@ -931,6 +971,20 @@ select {
   margin-bottom: 8px;
 }
 .drawer-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+.compare-table-wrap { overflow-x: auto; }
+.compare-table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.compare-table th, .compare-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.compare-table th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+.compare-table tr.recommended { background: var(--accent-soft); }
+.compare-table tr.active td:nth-child(2) { font-weight: 700; }
+.compare-star svg { width: 13px; height: 13px; color: var(--accent-hover); }
+.compare-blurb { white-space: normal; min-width: 220px; color: var(--text-muted); }
 
 /* Loading spinner - pure CSS, no extra dependencies */
 

@@ -13,6 +13,7 @@ const App = {
   setup() {
     store.initTheme();
     store.loadSessions();
+    store.loadModels();
     return { store, icons };
   },
   template: `

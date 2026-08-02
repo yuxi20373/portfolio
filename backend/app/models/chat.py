@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Float
 from sqlalchemy.orm import relationship
 
+from ..config import settings
 from ..database import Base
 
 
@@ -22,6 +23,18 @@ class ChatSession(Base):
       keep per-turn input tokens down. Raw messages are never deleted - this
       only affects what gets sent to the LLM. (This is unrelated to the wiki
       knowledge base - there is no more automatic session -> wiki pipeline.)
+
+    agent_mode: False (default) until the user sends "/agent" in this
+      session. False = every turn is a plain, single-message call to the
+      chat model (app/agent/simple_chat.py) - no history, no tools. True =
+      turns go through the deep agent (app/agent/runner.py), which gets the
+      full conversation history/memory summary and can use tools. See
+      app/services/chat/chat_service.py:process_chat_message.
+
+    model_name: which OpenAI model (see app/agent/model_catalog.py) this
+      session's turns are sent to. None = fall back to the deployment
+      default (settings.openai_model) - see the `model` property below,
+      which is what the API actually exposes (SessionOut.model).
     """
 
     __tablename__ = "chat_sessions"
@@ -31,6 +44,8 @@ class ChatSession(Base):
     channel = Column(String(20), default="web", index=True)
     external_user_id = Column(String(100), nullable=True, index=True)
     is_open = Column(Boolean, default=True)
+    agent_mode = Column(Boolean, default=False)
+    model_name = Column(String(50), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     last_message_at = Column(DateTime, default=datetime.utcnow)
@@ -39,6 +54,12 @@ class ChatSession(Base):
     summarized_up_to_message_id = Column(Integer, nullable=True)
 
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
+
+    @property
+    def model(self) -> str:
+        """The model this session's turns actually get sent to - its own
+        override if set, otherwise the deployment default."""
+        return self.model_name or settings.openai_model
 
 
 class ChatMessage(Base):

@@ -9,7 +9,8 @@ class SessionCreate(BaseModel):
 
 
 class SessionUpdate(BaseModel):
-    title: str
+    title: Optional[str] = None
+    model: Optional[str] = None
 
 
 class SessionOut(BaseModel):
@@ -18,9 +19,23 @@ class SessionOut(BaseModel):
     channel: str
     created_at: datetime
     last_message_at: datetime
+    agent_mode: bool
+    model: str  # effective model for this session - override if set, else the deployment default
 
     class Config:
         from_attributes = True
+
+
+class ModelInfo(BaseModel):
+    id: str
+    name: str
+    family: str
+    input_price: float  # USD per 1M input tokens
+    output_price: float  # USD per 1M output tokens
+    context_window: Optional[int] = None
+    knowledge_cutoff: Optional[str] = None
+    blurb: str
+    recommended: bool = False
 
 
 class MessageOut(BaseModel):

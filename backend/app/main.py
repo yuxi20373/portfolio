@@ -4,14 +4,28 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 
 from . import models  # noqa: F401  (import registers models with Base.metadata)
 from .database import engine, Base
 from .config import settings
-from .routers import chat, wiki, calendar, search, notes, weather, line, news
+from .routers import chat, wiki, calendar, search, notes, weather, line, news, models as models_router
 from .services.news import news_service
 
 Base.metadata.create_all(bind=engine)
+
+# create_all() only creates missing tables, it doesn't add new columns to a
+# table that already exists on disk (e.g. this repo's checked-in data.db) -
+# so newly added columns need a one-off ALTER TABLE here.
+_inspector = inspect(engine)
+if "chat_sessions" in _inspector.get_table_names():
+    _existing_cols = {c["name"] for c in _inspector.get_columns("chat_sessions")}
+    if "agent_mode" not in _existing_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN agent_mode BOOLEAN DEFAULT 0"))
+    if "model_name" not in _existing_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN model_name VARCHAR(50)"))
 
 app = FastAPI(title="Knowledge Chatbot API")
 
@@ -35,6 +49,7 @@ app.include_router(notes.router)
 app.include_router(weather.router)
 app.include_router(line.router)
 app.include_router(news.router)
+app.include_router(models_router.router)
 
 # NOTE: Wiki entries are only ever created/updated on explicit user action -
 # via chat (the update_wiki agent tool), the Search panel, or the Adjust
