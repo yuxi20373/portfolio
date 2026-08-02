@@ -10,9 +10,11 @@ from ...agent import simple_chat
 from ...integrations import langfuse_client
 from .title_service import generate_title
 
-# 使用者在對話一開頭打這個指令，把該 session 切換成 deep agent 模式（見
-# process_chat_message 開頭的判斷）。切換前的訊息預設走普通的單輪模型呼叫。
+# 使用者在對話中打這兩個指令切換該 session 的模式（見 process_chat_message
+# 開頭的判斷）。/agent 開啟 deep agent（完整歷史記憶 + 工具）；/normal 切回
+# 一般模式（單輪快速回覆、無工具，但仍保留同 session 的短期記憶）。
 AGENT_MODE_COMMAND = "/agent"
+NORMAL_MODE_COMMAND = "/normal"
 
 
 def get_or_create_session(
@@ -58,35 +60,55 @@ def get_or_create_session(
     return s
 
 
+def _switch_mode(db: DBSession, session: models.ChatSession, user_text: str, agent_mode: bool, reply_text: str) -> str:
+    session.agent_mode = agent_mode
+    db.add(models.ChatMessage(session_id=session.id, role="user", content=user_text))
+    db.add(models.ChatMessage(session_id=session.id, role="assistant", content=reply_text))
+    session.last_message_at = datetime.utcnow()
+    db.commit()
+    return reply_text
+
+
 def process_chat_message(db: DBSession, session: models.ChatSession, user_text: str) -> str:
     """Run one chat turn and persist both sides of it. Sessions are fully
     isolated from each other via session_id.
 
-    Default: every turn is a plain, single-message call to the chat model
-    (simple_chat.run_turn) - no history, no tools. Once the user sends
-    "/agent" in this session, session.agent_mode flips to True and every
-    later turn instead goes through the deep agent (agent_runner.run_turn),
-    which gets the full conversation history/memory summary and can use
-    tools."""
-    if user_text.strip().lower() == AGENT_MODE_COMMAND:
-        session.agent_mode = True
-        reply_text = "已切換為 Deep Agent 模式，之後的對話會啟用完整歷史記憶與工具（網路搜尋、寫入知識庫）。"
-        db.add(models.ChatMessage(session_id=session.id, role="user", content=user_text))
-        db.add(models.ChatMessage(session_id=session.id, role="assistant", content=reply_text))
-        session.last_message_at = datetime.utcnow()
-        db.commit()
-        return reply_text
+    Both modes get this session's short-term memory (memory_manager.get_
+    context_messages - rolling summary + recent raw messages, with its own
+    compaction once the history gets long). Default: session.agent_mode is
+    False, so turns are a single, tool-less call to the chat model
+    (simple_chat.run_turn). Sending "/agent" flips it to True, and turns
+    instead go through the deep agent (agent_runner.run_turn), which
+    additionally gets tools (web search, wiki writes). "/normal" flips it
+    back."""
+    command = user_text.strip().lower()
+    if command == AGENT_MODE_COMMAND:
+        return _switch_mode(
+            db,
+            session,
+            user_text,
+            True,
+            "已切換為 Deep Agent 模式，之後的對話會啟用工具（網路搜尋、寫入知識庫）。打 /normal 可以切回一般模式。",
+        )
+    if command == NORMAL_MODE_COMMAND:
+        return _switch_mode(
+            db,
+            session,
+            user_text,
+            False,
+            "已切換回一般模式，之後的對話是不使用工具的單輪快速回覆（仍保留這個對話的短期記憶）。打 /agent 可以再切回 Deep Agent 模式。",
+        )
+
+    # Build context from EXISTING history first, so the new user message
+    # below isn't double-counted when the model is called.
+    context_messages = memory_manager.get_context_messages(db, session)
+    db.add(models.ChatMessage(session_id=session.id, role="user", content=user_text))
+    db.commit()
 
     # session.model_name is None unless the user picked a specific model in
     # the UI - both paths below fall back to the deployment default in that case.
     run_id = None
     if session.agent_mode:
-        # Build context from EXISTING history first, so the new user message
-        # below isn't double-counted when the agent is called.
-        context_messages = memory_manager.get_context_messages(db, session)
-        db.add(models.ChatMessage(session_id=session.id, role="user", content=user_text))
-        db.commit()
-
         handler, run_id = langfuse_client.new_handler_and_run_id()
         reply_text, usage = agent_runner.run_turn(
             context_messages,
@@ -96,10 +118,7 @@ def process_chat_message(db: DBSession, session: models.ChatSession, user_text: 
             model_name=session.model_name,
         )
     else:
-        db.add(models.ChatMessage(session_id=session.id, role="user", content=user_text))
-        db.commit()
-
-        reply_text, usage = simple_chat.run_turn(user_text, model_name=session.model_name)
+        reply_text, usage = simple_chat.run_turn(context_messages, user_text, model_name=session.model_name)
 
     model_name = usage.get("model")
     input_tokens = usage.get("input_tokens", 0)

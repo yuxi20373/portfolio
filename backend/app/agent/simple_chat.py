@@ -1,8 +1,10 @@
-"""預設聊天路徑（非 deep agent）：單輪直接呼叫聊天模型，不帶歷史訊息、
-不掛任何工具，也不會觸發 deepagents 的規劃/工具迴圈。這是每個 session 一
-開始的預設行為；使用者在該 session 打過 /agent 指令切換成 agent_mode 後，
-才會改走 app/agent/runner.py 的 deep agent（含完整歷史/長期記憶摘要與工
-具）。見 app/services/chat/chat_service.py:process_chat_message。"""
+"""預設聊天路徑（非 deep agent）：呼叫聊天模型時不掛任何工具，也不會觸發
+deepagents 的規劃/工具迴圈 - 但仍會帶入這個 session 的短期記憶（context_
+messages，來自 app/agent/memory_manager.py，跟 deep agent 共用同一套歷史
+/摘要壓縮機制)。這是每個 session 一開始的預設行為；使用者在該 session 打
+過 /agent 指令切換成 agent_mode 後，才會改走 app/agent/runner.py 的 deep
+agent（額外多了工具）；打 /normal 可以切回來。見
+app/services/chat/chat_service.py:process_chat_message。"""
 
 from .agent_factory import build_chat_model, default_model_name
 from ..prompts.chat_agent import SIMPLE_CHAT_INSTRUCTIONS
@@ -17,11 +19,12 @@ def _get_model(model_name: str = None):
     return _models[key]
 
 
-def run_turn(user_text: str, model_name: str = None) -> tuple[str, dict]:
-    messages = [
-        {"role": "system", "content": SIMPLE_CHAT_INSTRUCTIONS},
-        {"role": "user", "content": user_text},
-    ]
+def run_turn(context_messages: list[dict], user_text: str, model_name: str = None) -> tuple[str, dict]:
+    messages = (
+        [{"role": "system", "content": SIMPLE_CHAT_INSTRUCTIONS}]
+        + context_messages
+        + [{"role": "user", "content": user_text}]
+    )
     result = _get_model(model_name).invoke(messages)
 
     content = result.content

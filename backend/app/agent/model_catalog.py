@@ -6,10 +6,10 @@ below are OpenAI's published numbers at the time this list was written and
 will drift as OpenAI updates them - there's no live pricing API, so this is
 maintained by hand.
 
-`recommended` marks the one model shown starred at the top of the picker -
-GPT-5.6 Terra, OpenAI's own "balances intelligence and cost" tier of the
-current flagship family, which fits everyday chat/summarization better than
-the cheaper Luna tier or the pricier reasoning-heavy Sol tier.
+`recommended` marks the models shown starred at the top of the picker -
+the cheap/small tier from each recent generation (Luna, 5.4 Mini, 5.4 Nano,
+5 Mini), since daily conversation and summarization doesn't need a frontier
+reasoning model.
 """
 
 MODELS = [
@@ -21,8 +21,8 @@ MODELS = [
         "output_price": 12.00,
         "context_window": 1_050_000,
         "knowledge_cutoff": "2026-02-16",
-        "blurb": "Balances intelligence and cost - best default for daily conversation and summarization.",
-        "recommended": True,
+        "blurb": "Balances intelligence and cost.",
+        "recommended": False,
     },
     {
         "id": "gpt-5.6-sol",
@@ -43,8 +43,8 @@ MODELS = [
         "output_price": 1.20,
         "context_window": 1_050_000,
         "knowledge_cutoff": "2026-02-16",
-        "blurb": "Optimized for cost-sensitive, high-volume workloads.",
-        "recommended": False,
+        "blurb": "Optimized for cost-sensitive, high-volume workloads - best default for daily conversation and summarization.",
+        "recommended": True,
     },
     {
         "id": "gpt-5.5",
@@ -88,7 +88,7 @@ MODELS = [
         "context_window": None,
         "knowledge_cutoff": None,
         "blurb": "Smaller/cheaper GPT-5.4, still strong for everyday chat.",
-        "recommended": False,
+        "recommended": True,
     },
     {
         "id": "gpt-5.4-nano",
@@ -99,7 +99,7 @@ MODELS = [
         "context_window": None,
         "knowledge_cutoff": None,
         "blurb": "Smallest, fastest GPT-5.4 tier.",
-        "recommended": False,
+        "recommended": True,
     },
     {
         "id": "gpt-5.4-pro",
@@ -198,7 +198,7 @@ MODELS = [
         "context_window": 400_000,
         "knowledge_cutoff": "2024-09",
         "blurb": "Smaller/cheaper GPT-5.",
-        "recommended": False,
+        "recommended": True,
     },
     {
         "id": "gpt-5-nano",

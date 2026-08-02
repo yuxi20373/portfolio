@@ -43,7 +43,12 @@ html, body {
 
 #app { height: 100%; }
 
-.app-shell { display: flex; height: 100vh; }
+/* 100vh on iOS Safari is measured with the collapsible URL bar hidden, so it
+   overshoots the real visible area and pushes content (e.g. the chat input)
+   below the fold until you scroll the whole page. 100dvh tracks the actual
+   visible viewport instead; the 100vh line stays first as a fallback for
+   browsers that don't understand dvh (they just ignore that declaration). */
+.app-shell { display: flex; height: 100vh; height: 100dvh; }
 
 /* Mobile-only hamburger button + drawer backdrop for the sidebar (see the
    "open" class on .sidebar and the @media block at the end of this file).
