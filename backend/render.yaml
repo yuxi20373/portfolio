@@ -15,6 +15,9 @@ services:
     runtime: python
     plan: free
     rootDir: backend
+    # Python 版本由 backend/.python-version 釘住（3.11，跟本機開發環境一致）。
+    # 沒釘的話 Render 會用它自己的預設版本，太新的話 pydantic-core 會找不到
+    # 預編譯 wheel，退回原始碼編譯又缺 Rust 工具鏈，導致 build 失敗。
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     # Render's free plan filesystem is EPHEMERAL - the SQLite file (data.db)

@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git remote*)",
+      "Bash(git ls-files*)",
+      "Bash(git ls-remote*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(python3 *)",
+      "Bash(python *)",
+      "Bash(pip install *)",
+      "Bash(pip list*)",
+      "Bash(pip show*)",
+      "Bash(conda *)",
+      "Bash(/opt/anaconda3/*)",
+      "Bash(uvicorn *)",
+      "Bash(curl *)",
+      "Bash(ls*)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(cat *)",
+      "Bash(wc *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(lsof*)",
+      "Bash(ps*)",
+      "Bash(render --version)",
+      "Bash(render --help)",
+      "Bash(render whoami)",
+      "Bash(render services*)",
+      "Bash(render logs*)",
+      "Bash(render skills list*)",
+      "Bash(render skills install*)",
+      "Bash(brew install *)",
+      "Bash(brew --version)"
+    ]
+  }
+}
