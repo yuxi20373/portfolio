@@ -45,6 +45,35 @@ html, body {
 
 .app-shell { display: flex; height: 100vh; }
 
+/* Mobile-only hamburger button + drawer backdrop for the sidebar (see the
+   "open" class on .sidebar and the @media block at the end of this file).
+   Hidden on desktop - the sidebar is always visible there. */
+.mobile-menu-btn {
+  display: none;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 50;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+}
+.mobile-menu-btn svg { width: 18px; height: 18px; }
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 39;
+}
+
 /* ---------------- Sidebar ---------------- */
 
 .sidebar {
@@ -1081,5 +1110,60 @@ select {
   25% { opacity: 1; }
   90% { opacity: 0; }
   100% { transform: translateY(9px); opacity: 0; }
+}
+
+/* ---------------- Mobile layout ----------------
+   Everything above this point is untouched at desktop widths - the rules
+   below only kick in at <=768px, turning the sidebar into a slide-in
+   drawer (see .mobile-menu-btn / .sidebar-backdrop / store.sidebarOpen)
+   and tightening up spacing/grids so nothing overflows a phone screen. */
+
+@media (max-width: 768px) {
+  .mobile-menu-btn { display: flex; }
+  .sidebar-backdrop { display: block; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 40;
+    width: 82vw;
+    max-width: 320px;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+    transform: translateX(-100%);
+    transition: transform .2s ease;
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  /* Leave room at the top-left for the fixed hamburger button so it
+     doesn't sit on top of the first line of each view's content. */
+  .wiki-panel, .calendar-panel, .news-panel { padding: 56px 14px 14px; }
+  .chat-window { padding: 56px 14px 14px; }
+  .home-panel { padding: 56px 16px 24px; gap: 24px; }
+
+  .msg { max-width: 88%; }
+  .chat-input { padding: 10px 12px; }
+
+  .wiki-toolbar { gap: 8px; }
+
+  .calendar-grid { gap: 4px; }
+  .cal-cell { min-height: 52px; padding: 4px; font-size: 11.5px; }
+  .cal-dow { font-size: 10px; }
+  .cal-note-chip { display: none; } /* no room on a phone-width cell; the count badge still shows */
+
+  .home-hero-wrap { width: min(280px, 68vw); }
+  .home-float { width: 52px; height: 52px; }
+  .home-float-light { width: 42px; height: 42px; top: -20px; margin-left: -21px; }
+  .home-float-wiki { left: -10px; }
+  .home-float-calendar { right: -10px; }
+  .home-float-weather { left: -4px; }
+
+  .news-featured-card { flex-direction: column; padding: 10px; }
+  .news-carousel-arrow { display: none; } /* dots below still let you switch featured articles */
+  .news-card-grid { grid-template-columns: 1fr; }
+  .news-week-popover { left: auto; right: 0; }
+
+  .drawer-panel { width: 100vw !important; max-width: 100vw; }
 }
 

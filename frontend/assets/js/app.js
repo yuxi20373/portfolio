@@ -1,5 +1,6 @@
 const { createApp } = window.Vue;
 import { store } from "./store.js";
+import { icons } from "./icons.js";
 import Sidebar from "./components/Sidebar.js";
 import HomeView from "./components/HomeView.js";
 import ChatView from "./components/ChatView.js";
@@ -12,10 +13,12 @@ const App = {
   setup() {
     store.initTheme();
     store.loadSessions();
-    return { store };
+    return { store, icons };
   },
   template: `
   <div class="app-shell">
+    <button class="mobile-menu-btn" title="Menu" @click="store.toggleSidebar()" v-html="store.sidebarOpen ? icons.close : icons.menu"></button>
+    <div v-if="store.sidebarOpen" class="sidebar-backdrop" @click="store.closeSidebar()"></div>
     <Sidebar />
     <HomeView v-if="store.view === 'home'" />
     <ChatView v-else-if="store.view === 'chat'" />

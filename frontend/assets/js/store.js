@@ -5,6 +5,11 @@ export const store = reactive({
   // view: "home" | "chat" | "wiki" | "calendar" | "news"
   view: "home",
 
+  // Mobile-only drawer state for the sidebar (see the hamburger button in
+  // app.js and the "open" class on .sidebar in style.css). Meaningless on
+  // desktop - the sidebar is always visible there regardless of this flag.
+  sidebarOpen: false,
+
   // light/dark mode, persisted to localStorage (this is a real deployed
   // site, not a sandboxed preview, so localStorage is the right tool here)
   theme: "light",
@@ -76,6 +81,7 @@ export const store = reactive({
   async selectSession(id) {
     this.currentSessionId = id;
     this.loadingMessages = true;
+    this.sidebarOpen = false; // no-op on desktop; closes the mobile drawer after picking one
     try {
       this.messages = await api.get(`/api/sessions/${id}/messages`);
     } finally {
@@ -146,6 +152,7 @@ export const store = reactive({
   openCalendarDate(dateStr) {
     this.pendingCalendarDate = dateStr;
     this.view = "calendar";
+    this.sidebarOpen = false;
   },
 
   async loadWikiEntries() {
@@ -154,6 +161,7 @@ export const store = reactive({
 
   async selectWikiEntry(id) {
     this.currentWikiId = id;
+    this.sidebarOpen = false;
     this.currentWikiEntry = await api.get(`/api/wiki/${id}`);
   },
 
@@ -237,6 +245,7 @@ export const store = reactive({
     this.newsCurrentArticle = null;
     this.newsOverview = null;
     this.newsWeek = null;
+    this.sidebarOpen = false;
     await this.loadNewsOverview();
   },
 
@@ -330,6 +339,16 @@ export const store = reactive({
   closeNewsArticle() {
     this.newsCurrentArticle = null;
     this.newsArticleSiblings = [];
+  },
+
+  // --- Mobile sidebar drawer ---
+
+  toggleSidebar() {
+    this.sidebarOpen = !this.sidebarOpen;
+  },
+
+  closeSidebar() {
+    this.sidebarOpen = false;
   },
 
   // --- Theme (light/dark) ---

@@ -21,6 +21,7 @@ export default {
 
     function setView(v) {
       store.view = v;
+      store.closeSidebar(); // no-op on desktop; closes the mobile drawer after navigating
       if (v === "wiki") {
         if (store.wikiEntries.length === 0) store.loadWikiEntries();
         if (store.wikiFolders.length === 0) store.loadWikiFolders();
@@ -170,7 +171,7 @@ export default {
     };
   },
   template: `
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{open: store.sidebarOpen}">
     <div class="icon-nav">
       <button class="icon-btn" :class="{active: store.view==='home'}" @click="setView('home')" title="Home" v-html="icons.home"></button>
       <button class="icon-btn" :class="{active: store.view==='chat'}" @click="setView('chat')" title="Chat" v-html="icons.chat"></button>
