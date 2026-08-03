@@ -14,6 +14,12 @@ with how wiki_search_service.py structures entries.
 Runs its own short-lived DB session (rather than reusing a request-scoped
 one) since tool calls happen inside the LangGraph agent loop, outside of
 any FastAPI request/response cycle.
+
+The wiki is private per login account (see app/models/auth.py), but this
+tool's signature is dictated by what the LLM can call - there's no room for
+a user_id argument. app/services/chat/chat_service.py stashes the current
+turn's account in a contextvar (app/request_context.py) before invoking the
+agent; this tool reads it back out.
 """
 
 from datetime import datetime
@@ -23,6 +29,7 @@ from langchain_core.tools import tool
 
 from ...database import SessionLocal
 from ... import models
+from ...request_context import current_user_id
 from ...services.wiki.entry_types import ENTRY_TYPE_TEMPLATES
 
 
@@ -44,6 +51,13 @@ def update_wiki(title: str, entry_type: str, summary: str, content: str, tags: O
             drawn only from that entry_type's recommended section list.
         tags: a short list of keyword tags.
     """
+    user_id = current_user_id.get()
+    if user_id is None:
+        # No logged-in account for this turn (e.g. the LINE channel, which
+        # has no web login of its own) - the wiki is per-account now, so
+        # there's nowhere to write this.
+        return "Could not save: the wiki isn't available on this channel."
+
     if entry_type not in ENTRY_TYPE_TEMPLATES:
         entry_type = "general"
 
@@ -53,7 +67,11 @@ def update_wiki(title: str, entry_type: str, summary: str, content: str, tags: O
 
     db = SessionLocal()
     try:
-        existing = db.query(models.WikiEntry).filter(models.WikiEntry.title == title).first()
+        existing = (
+            db.query(models.WikiEntry)
+            .filter(models.WikiEntry.user_id == user_id, models.WikiEntry.title == title)
+            .first()
+        )
         if existing:
             existing.entry_type = entry_type
             existing.summary = summary
@@ -70,6 +88,7 @@ def update_wiki(title: str, entry_type: str, summary: str, content: str, tags: O
             content=content,
             tags=tags or [],
             related_titles=[],
+            user_id=user_id,
         )
         db.add(entry)
         db.commit()

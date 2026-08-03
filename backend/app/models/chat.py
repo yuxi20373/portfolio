@@ -35,6 +35,13 @@ class ChatSession(Base):
       session's turns are sent to. None = fall back to the deployment
       default (settings.openai_model) - see the `model` property below,
       which is what the API actually exposes (SessionOut.model).
+
+    user_id: which logged-in account this session belongs to (see
+      app/models/auth.py) - nullable because the LINE channel has no web
+      login concept of its own (see external_user_id instead) and its
+      sessions are never attributed to a User row. Web-channel sessions
+      always have one; see app/auth.py:get_current_user and
+      app/routers/chat.py.
     """
 
     __tablename__ = "chat_sessions"
@@ -46,6 +53,7 @@ class ChatSession(Base):
     is_open = Column(Boolean, default=True)
     agent_mode = Column(Boolean, default=False)
     model_name = Column(String(50), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     last_message_at = Column(DateTime, default=datetime.utcnow)

@@ -8,6 +8,7 @@ from ...agent import memory_manager
 from ...agent import runner as agent_runner
 from ...agent import simple_chat
 from ...integrations import langfuse_client
+from ...request_context import current_user_id
 from .title_service import generate_title
 
 # 使用者在對話中打這兩個指令切換該 session 的模式（見 process_chat_message
@@ -22,6 +23,7 @@ def get_or_create_session(
     channel: str,
     external_user_id: str = None,
     session_id: int = None,
+    user_id: int = None,
 ) -> models.ChatSession:
     """
     Resolve which session (= scope of short-term memory) this message belongs to.
@@ -31,11 +33,21 @@ def get_or_create_session(
       user's most recent session if they spoke recently (within
       SESSION_TIMEOUT_MINUTES); otherwise start a new session, so context
       doesn't grow forever.
+
+    user_id: the logged-in account (web channel only - see
+    app/auth.py:get_current_user). When given, a session_id that doesn't
+    exist or belongs to a different account raises ValueError instead of
+    silently starting a new session or handing back someone else's
+    conversation - routers/chat.py turns that into a 404.
     """
     if session_id is not None:
         s = db.query(models.ChatSession).get(session_id)
         if s:
+            if user_id is not None and s.user_id != user_id:
+                raise ValueError("session not found")
             return s
+        if user_id is not None:
+            raise ValueError("session not found")
 
     if external_user_id:
         cutoff = datetime.utcnow() - timedelta(minutes=settings.session_timeout_minutes)
@@ -53,7 +65,7 @@ def get_or_create_session(
         if s:
             return s
 
-    s = models.ChatSession(title="New Conversation", channel=channel, external_user_id=external_user_id)
+    s = models.ChatSession(title="New Conversation", channel=channel, external_user_id=external_user_id, user_id=user_id)
     db.add(s)
     db.commit()
     db.refresh(s)
@@ -81,6 +93,12 @@ def process_chat_message(db: DBSession, session: models.ChatSession, user_text: 
     instead go through the deep agent (agent_runner.run_turn), which
     additionally gets tools (web search, wiki writes). "/normal" flips it
     back."""
+    # Wiki writes from the deep agent's update_wiki tool need to know which
+    # account's wiki to write into, but tool calls happen deep inside the
+    # LangGraph loop with no access to this function's arguments - stash it
+    # in a contextvar for the tool to read (see app/request_context.py).
+    current_user_id.set(session.user_id)
+
     command = user_text.strip().lower()
     if command == AGENT_MODE_COMMAND:
         return _switch_mode(

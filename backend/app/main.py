@@ -4,28 +4,17 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import inspect, text
 
 from . import models  # noqa: F401  (import registers models with Base.metadata)
-from .database import engine, Base
 from .config import settings
-from .routers import chat, wiki, calendar, search, notes, weather, line, news, models as models_router
+from .routers import auth, chat, wiki, calendar, search, notes, weather, line, news, models as models_router
 from .services.news import news_service
 
-Base.metadata.create_all(bind=engine)
-
-# create_all() only creates missing tables, it doesn't add new columns to a
-# table that already exists on disk (e.g. this repo's checked-in data.db) -
-# so newly added columns need a one-off ALTER TABLE here.
-_inspector = inspect(engine)
-if "chat_sessions" in _inspector.get_table_names():
-    _existing_cols = {c["name"] for c in _inspector.get_columns("chat_sessions")}
-    if "agent_mode" not in _existing_cols:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN agent_mode BOOLEAN DEFAULT 0"))
-    if "model_name" not in _existing_cols:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN model_name VARCHAR(50)"))
+# Schema is owned entirely by Alembic now (backend/alembic/) - there is no
+# create_all()/ad-hoc ALTER TABLE fallback here anymore, since mixing the
+# two is exactly how schema drift happens. Run `alembic upgrade head`
+# (locally, and via Render's Pre-Deploy Command in production - see
+# render.yaml) before starting the app whenever models change.
 
 app = FastAPI(title="Knowledge Chatbot API")
 
@@ -41,6 +30,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(wiki.router)
 app.include_router(calendar.router)

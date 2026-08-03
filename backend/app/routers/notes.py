@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session as DBSession
 
 from .. import models
+from ..auth import get_current_user
 from ..database import get_db
 
 router = APIRouter(prefix="/api/notes", tags=["notes"])
@@ -26,8 +27,17 @@ def _note_dict(n: models.Note):
     return {"id": n.id, "title": n.title, "content": n.content, "created_at": n.created_at}
 
 
+def _get_owned_note(db: DBSession, note_id: int, user: models.User) -> models.Note:
+    n = db.query(models.Note).get(note_id)
+    if not n or n.user_id != user.id:
+        raise HTTPException(404, "not found")
+    return n
+
+
 @router.post("")
-def create_note(payload: NoteCreate, db: DBSession = Depends(get_db)):
+def create_note(
+    payload: NoteCreate, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)
+):
     title = payload.title.strip()
     if not title:
         raise HTTPException(400, "title cannot be empty")
@@ -39,7 +49,7 @@ def create_note(payload: NoteCreate, db: DBSession = Depends(get_db)):
     else:
         created_at = datetime.utcnow()
 
-    note = models.Note(title=title, content=payload.content or "", created_at=created_at)
+    note = models.Note(title=title, content=payload.content or "", created_at=created_at, user_id=user.id)
     db.add(note)
     db.commit()
     db.refresh(note)
@@ -47,21 +57,22 @@ def create_note(payload: NoteCreate, db: DBSession = Depends(get_db)):
 
 
 @router.get("/{note_id}")
-def get_note(note_id: int, db: DBSession = Depends(get_db)):
-    n = db.query(models.Note).get(note_id)
-    if not n:
-        raise HTTPException(404, "not found")
+def get_note(note_id: int, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+    n = _get_owned_note(db, note_id, user)
     return _note_dict(n)
 
 
 @router.patch("/{note_id}")
-def update_note(note_id: int, payload: NoteUpdate, db: DBSession = Depends(get_db)):
+def update_note(
+    note_id: int,
+    payload: NoteUpdate,
+    db: DBSession = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
     """Direct manual edit of a note's title/content - the note's date
     (created_at) doesn't change; delete and re-add it under a different day
     if you need to move it."""
-    n = db.query(models.Note).get(note_id)
-    if not n:
-        raise HTTPException(404, "not found")
+    n = _get_owned_note(db, note_id, user)
     if payload.title is not None:
         title = payload.title.strip()
         if not title:
@@ -75,10 +86,8 @@ def update_note(note_id: int, payload: NoteUpdate, db: DBSession = Depends(get_d
 
 
 @router.delete("/{note_id}")
-def delete_note(note_id: int, db: DBSession = Depends(get_db)):
-    n = db.query(models.Note).get(note_id)
-    if not n:
-        raise HTTPException(404, "not found")
+def delete_note(note_id: int, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+    n = _get_owned_note(db, note_id, user)
     db.delete(n)
     db.commit()
     return {"ok": True}

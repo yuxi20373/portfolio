@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from ..database import Base
@@ -9,12 +9,16 @@ from ..database import Base
 class WikiFolder(Base):
     """A user-created folder for organizing wiki entries. Entries are filed
     into folders manually by the user (see routers/wiki.py's PATCH endpoint)
-    - there is no automatic/LLM-driven folder assignment."""
+    - there is no automatic/LLM-driven folder assignment.
+
+    user_id: the wiki is entirely private per account - every folder
+    belongs to exactly one User (see app/models/auth.py)."""
 
     __tablename__ = "wiki_folders"
 
     id = Column(Integer, primary_key=True)
     name = Column(String(255))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     entries = relationship("WikiEntry", back_populates="folder")
@@ -40,18 +44,24 @@ class WikiEntry(Base):
       strings, not a graph - there is no knowledge-graph feature).
     created_at: also used to show this entry on the calendar, on whichever
       day it was actually created.
+    user_id: the wiki is entirely private per account - every entry belongs
+      to exactly one User (see app/models/auth.py). Title is only unique
+      *within* an account (see the UniqueConstraint below), not globally -
+      two different accounts can each have their own "Python" entry.
     """
 
     __tablename__ = "wiki_entries"
+    __table_args__ = (UniqueConstraint("user_id", "title", name="uq_wiki_entries_user_title"),)
 
     id = Column(Integer, primary_key=True)
-    title = Column(String(255), unique=True, index=True)
+    title = Column(String(255), index=True)
     entry_type = Column(String(50), default="general")
     summary = Column(Text)   # 1-2 sentence summary
     content = Column(Text)   # full Markdown content: lead paragraph + "## Heading" sections
     tags = Column(JSON, default=list)
     related_titles = Column(JSON, default=list)
     folder_id = Column(Integer, ForeignKey("wiki_folders.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session as DBSession
 from datetime import datetime
 
 from .. import models
+from ..auth import get_current_user
 from ..database import get_db
 from ..services.wiki.wiki_search_service import create_or_update_via_search
 from ..services.wiki.wiki_adjust_service import propose_adjustment, apply_adjustment
@@ -30,9 +31,28 @@ class WikiAdjustApplyRequest(BaseModel):
     summary: Optional[str] = None
 
 
+def _get_owned_entry(db: DBSession, entry_id: int, user: models.User) -> models.WikiEntry:
+    e = db.query(models.WikiEntry).get(entry_id)
+    if not e or e.user_id != user.id:
+        raise HTTPException(404, "not found")
+    return e
+
+
+def _get_owned_folder(db: DBSession, folder_id: int, user: models.User) -> models.WikiFolder:
+    f = db.query(models.WikiFolder).get(folder_id)
+    if not f or f.user_id != user.id:
+        raise HTTPException(404, "folder not found")
+    return f
+
+
 @router.get("/wiki")
-def list_wiki(db: DBSession = Depends(get_db)):
-    entries = db.query(models.WikiEntry).order_by(models.WikiEntry.updated_at.desc()).all()
+def list_wiki(db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+    entries = (
+        db.query(models.WikiEntry)
+        .filter(models.WikiEntry.user_id == user.id)
+        .order_by(models.WikiEntry.updated_at.desc())
+        .all()
+    )
     return [
         {
             "id": e.id,
@@ -47,15 +67,10 @@ def list_wiki(db: DBSession = Depends(get_db)):
     ]
 
 
-@router.get("/wiki/{entry_id}")
-def get_wiki_entry(entry_id: int, db: DBSession = Depends(get_db)):
-    e = db.query(models.WikiEntry).get(entry_id)
-    if not e:
-        raise HTTPException(404, "not found")
-
+def _wiki_entry_detail(db: DBSession, e: models.WikiEntry, user: models.User):
     related = []
     for title in e.related_titles or []:
-        t = db.query(models.WikiEntry).filter(models.WikiEntry.title == title).first()
+        t = db.query(models.WikiEntry).filter(models.WikiEntry.user_id == user.id, models.WikiEntry.title == title).first()
         if t:
             related.append({"id": t.id, "title": t.title})
 
@@ -72,13 +87,22 @@ def get_wiki_entry(entry_id: int, db: DBSession = Depends(get_db)):
     }
 
 
+@router.get("/wiki/{entry_id}")
+def get_wiki_entry(entry_id: int, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+    e = _get_owned_entry(db, entry_id, user)
+    return _wiki_entry_detail(db, e, user)
+
+
 @router.patch("/wiki/{entry_id}")
-def update_wiki_entry(entry_id: int, payload: WikiEntryUpdate, db: DBSession = Depends(get_db)):
+def update_wiki_entry(
+    entry_id: int,
+    payload: WikiEntryUpdate,
+    db: DBSession = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
     """Direct manual edit (title/content/tags/etc) and/or moving the entry
     into a different folder - no LLM involved at all."""
-    e = db.query(models.WikiEntry).get(entry_id)
-    if not e:
-        raise HTTPException(404, "not found")
+    e = _get_owned_entry(db, entry_id, user)
 
     if payload.title is not None:
         title = payload.title.strip()
@@ -96,40 +120,41 @@ def update_wiki_entry(entry_id: int, payload: WikiEntryUpdate, db: DBSession = D
     if payload.clear_folder:
         e.folder_id = None
     elif payload.folder_id is not None:
-        folder = db.query(models.WikiFolder).get(payload.folder_id)
-        if not folder:
-            raise HTTPException(404, "folder not found")
+        folder = _get_owned_folder(db, payload.folder_id, user)
         e.folder_id = folder.id
 
     e.updated_at = datetime.utcnow()
     db.commit()
-    return get_wiki_entry(entry_id, db)
+    return _wiki_entry_detail(db, e, user)
 
 
 @router.delete("/wiki/{entry_id}")
-def delete_wiki_entry(entry_id: int, db: DBSession = Depends(get_db)):
-    e = db.query(models.WikiEntry).get(entry_id)
-    if not e:
-        raise HTTPException(404, "not found")
+def delete_wiki_entry(entry_id: int, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+    e = _get_owned_entry(db, entry_id, user)
     db.delete(e)
     db.commit()
     return {"ok": True}
 
 
 @router.post("/wiki/search")
-def search_into_wiki(payload: WikiSearchRequest, db: DBSession = Depends(get_db)):
+def search_into_wiki(
+    payload: WikiSearchRequest, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)
+):
     try:
-        entry = create_or_update_via_search(db, payload.keyword, payload.question)
+        entry = create_or_update_via_search(db, user.id, payload.keyword, payload.question)
     except ValueError as ex:
         raise HTTPException(400, str(ex))
-    return get_wiki_entry(entry.id, db)
+    return _wiki_entry_detail(db, entry, user)
 
 
 @router.post("/wiki/{entry_id}/adjust/preview")
-def preview_wiki_adjustment(entry_id: int, payload: WikiAdjustPreviewRequest, db: DBSession = Depends(get_db)):
-    e = db.query(models.WikiEntry).get(entry_id)
-    if not e:
-        raise HTTPException(404, "not found")
+def preview_wiki_adjustment(
+    entry_id: int,
+    payload: WikiAdjustPreviewRequest,
+    db: DBSession = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    e = _get_owned_entry(db, entry_id, user)
     try:
         return propose_adjustment(db, e, payload.instruction, payload.base_content, payload.base_summary)
     except ValueError as ex:
@@ -137,29 +162,39 @@ def preview_wiki_adjustment(entry_id: int, payload: WikiAdjustPreviewRequest, db
 
 
 @router.post("/wiki/{entry_id}/adjust/apply")
-def apply_wiki_adjustment(entry_id: int, payload: WikiAdjustApplyRequest, db: DBSession = Depends(get_db)):
-    e = db.query(models.WikiEntry).get(entry_id)
-    if not e:
-        raise HTTPException(404, "not found")
+def apply_wiki_adjustment(
+    entry_id: int,
+    payload: WikiAdjustApplyRequest,
+    db: DBSession = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    e = _get_owned_entry(db, entry_id, user)
     apply_adjustment(db, e, payload.summary, payload.content)
-    return get_wiki_entry(entry_id, db)
+    return _wiki_entry_detail(db, e, user)
 
 
 # ---------------- Folders (user-created, manual organization only) ----------------
 
 
 @router.get("/wiki-folders")
-def list_wiki_folders(db: DBSession = Depends(get_db)):
-    folders = db.query(models.WikiFolder).order_by(models.WikiFolder.name.asc()).all()
+def list_wiki_folders(db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+    folders = (
+        db.query(models.WikiFolder)
+        .filter(models.WikiFolder.user_id == user.id)
+        .order_by(models.WikiFolder.name.asc())
+        .all()
+    )
     return [{"id": f.id, "name": f.name} for f in folders]
 
 
 @router.post("/wiki-folders")
-def create_wiki_folder(payload: WikiFolderCreate, db: DBSession = Depends(get_db)):
+def create_wiki_folder(
+    payload: WikiFolderCreate, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)
+):
     name = payload.name.strip()
     if not name:
         raise HTTPException(400, "name cannot be empty")
-    folder = models.WikiFolder(name=name)
+    folder = models.WikiFolder(name=name, user_id=user.id)
     db.add(folder)
     db.commit()
     db.refresh(folder)
@@ -167,10 +202,13 @@ def create_wiki_folder(payload: WikiFolderCreate, db: DBSession = Depends(get_db
 
 
 @router.patch("/wiki-folders/{folder_id}")
-def rename_wiki_folder(folder_id: int, payload: WikiFolderUpdate, db: DBSession = Depends(get_db)):
-    folder = db.query(models.WikiFolder).get(folder_id)
-    if not folder:
-        raise HTTPException(404, "not found")
+def rename_wiki_folder(
+    folder_id: int,
+    payload: WikiFolderUpdate,
+    db: DBSession = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    folder = _get_owned_folder(db, folder_id, user)
     name = payload.name.strip()
     if not name:
         raise HTTPException(400, "name cannot be empty")
@@ -180,12 +218,12 @@ def rename_wiki_folder(folder_id: int, payload: WikiFolderUpdate, db: DBSession 
 
 
 @router.delete("/wiki-folders/{folder_id}")
-def delete_wiki_folder(folder_id: int, db: DBSession = Depends(get_db)):
+def delete_wiki_folder(
+    folder_id: int, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)
+):
     """Deleting a folder does not delete its entries - they just become
     Uncategorized (folder_id = None)."""
-    folder = db.query(models.WikiFolder).get(folder_id)
-    if not folder:
-        raise HTTPException(404, "not found")
+    folder = _get_owned_folder(db, folder_id, user)
     for e in db.query(models.WikiEntry).filter(models.WikiEntry.folder_id == folder_id).all():
         e.folder_id = None
     db.delete(folder)

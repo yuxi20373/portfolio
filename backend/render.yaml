@@ -19,15 +19,11 @@ services:
     # 沒釘的話 Render 會用它自己的預設版本，太新的話 pydantic-core 會找不到
     # 預編譯 wheel，退回原始碼編譯又缺 Rust 工具鏈，導致 build 失敗。
     buildCommand: pip install -r requirements.txt
+    # Schema is managed by Alembic (backend/alembic/) - this runs any
+    # pending migrations against DATABASE_URL before each deploy goes live,
+    # so the running app is never ahead of the database's actual schema.
+    preDeployCommand: alembic upgrade head
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    # Render's free plan filesystem is EPHEMERAL - the SQLite file (data.db)
-    # gets wiped on every redeploy/restart. If you're keeping this running
-    # long-term, either upgrade and add a persistent disk (uncomment below
-    # and change DATABASE_URL to point at the mounted path), or migrate to
-    # a managed Postgres instance instead.
-    # disk:
-    #   name: data
-    #   mountPath: /var/data
     envVars:
       - key: GROQ_API_KEY
         sync: false
@@ -51,8 +47,11 @@ services:
         sync: false
       - key: LANGFUSE_HOST
         value: https://cloud.langfuse.com
+      # Managed Postgres, created manually in the dashboard (not declared
+      # under a `databases:` key here - see the setup steps you were given
+      # separately). Paste its Internal Database URL here once created.
       - key: DATABASE_URL
-        value: sqlite:///./data.db
+        sync: false
       - key: SESSION_TIMEOUT_MINUTES
         value: "1440"
       - key: MEMORY_RECENT_WINDOW

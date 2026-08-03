@@ -8,9 +8,10 @@ from ...prompts.chat_search import SEARCH_SYSTEM_PROMPT
 from ...utils.json_extract import extract_json
 
 
-def semantic_search_sessions(db: DBSession, query: str, limit_sessions: int = 200):
+def semantic_search_sessions(db: DBSession, user_id: int, query: str, limit_sessions: int = 200):
     sessions = (
         db.query(models.ChatSession)
+        .filter(models.ChatSession.user_id == user_id)
         .order_by(models.ChatSession.last_message_at.desc())
         .limit(limit_sessions)
         .all()

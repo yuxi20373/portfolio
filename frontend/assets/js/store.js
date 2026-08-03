@@ -2,6 +2,12 @@ const { reactive } = window.Vue;
 import { api } from "./api.js";
 
 export const store = reactive({
+  // login: token has no expiry (see backend/app/models/auth.py) - it's
+  // valid until logout() explicitly deletes it, so staying logged in
+  // across reloads/devices is just "is there a token in localStorage".
+  loggedIn: !!localStorage.getItem("auth_token"),
+  username: localStorage.getItem("auth_username") || null,
+
   // view: "home" | "chat" | "wiki" | "calendar" | "news"
   view: "home",
 
@@ -378,4 +384,43 @@ export const store = reactive({
     localStorage.setItem("theme", this.theme);
     document.documentElement.setAttribute("data-theme", this.theme);
   },
+
+  // --- Login (no auto-logout - see AuthToken in backend/app/models/auth.py) ---
+
+  async login(username, password) {
+    const res = await api.post("/api/auth/login", { username, password });
+    localStorage.setItem("auth_token", res.token);
+    localStorage.setItem("auth_username", res.username);
+    this.username = res.username;
+    this.loggedIn = true;
+  },
+
+  async logout() {
+    try {
+      await api.post("/api/auth/logout", {});
+    } catch (e) {
+      // ignore - clearing local state regardless
+    }
+    this.handleUnauthorized();
+  },
+
+  // Also called when any API call comes back 401 (see the auth:unauthorized
+  // listener below) - e.g. the token got invalidated by logging out
+  // elsewhere. Clears everything scoped to the account so a different login
+  // never flashes the previous account's data.
+  handleUnauthorized() {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_username");
+    this.loggedIn = false;
+    this.username = null;
+    this.sessions = [];
+    this.currentSessionId = null;
+    this.messages = [];
+    this.wikiEntries = [];
+    this.currentWikiId = null;
+    this.currentWikiEntry = null;
+    this.wikiFolders = [];
+  },
 });
+
+window.addEventListener("auth:unauthorized", () => store.handleUnauthorized());

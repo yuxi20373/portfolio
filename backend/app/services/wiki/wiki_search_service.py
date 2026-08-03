@@ -12,6 +12,7 @@ new information is merged in. Trimming/removing content is only done by
 wiki_adjust_service.py, and only on an explicit user instruction.
 """
 
+import json
 from datetime import datetime
 
 from sqlalchemy.orm import Session as DBSession
@@ -24,19 +25,25 @@ from ...agent.tools.web_search import web_search as web_search_tool
 from .entry_types import ENTRY_TYPE_TEMPLATES
 
 
-def get_existing_titles_context(db: DBSession, limit: int = 300):
-    entries = db.query(models.WikiEntry).order_by(models.WikiEntry.updated_at.desc()).limit(limit).all()
+def get_existing_titles_context(db: DBSession, user_id: int, limit: int = 300):
+    entries = (
+        db.query(models.WikiEntry)
+        .filter(models.WikiEntry.user_id == user_id)
+        .order_by(models.WikiEntry.updated_at.desc())
+        .limit(limit)
+        .all()
+    )
     return [{"title": e.title, "entry_type": e.entry_type, "summary": e.summary} for e in entries]
 
 
-def create_or_update_via_search(db: DBSession, keyword: str, question: str) -> models.WikiEntry:
+def create_or_update_via_search(db: DBSession, user_id: int, keyword: str, question: str) -> models.WikiEntry:
     keyword = (keyword or "").strip()
     question = (question or "").strip()
     if not keyword or not question:
         raise ValueError("Both a keyword and a question are required.")
 
     search_results = web_search_tool.invoke({"query": keyword})
-    existing = get_existing_titles_context(db)
+    existing = get_existing_titles_context(db, user_id)
 
     user_prompt = (
         f"Search keyword used: {keyword}\n"
@@ -63,7 +70,9 @@ def create_or_update_via_search(db: DBSession, keyword: str, question: str) -> m
     if entry_type not in ENTRY_TYPE_TEMPLATES:
         entry_type = "general"
 
-    existing_entry = db.query(models.WikiEntry).filter(models.WikiEntry.title == title).first()
+    existing_entry = (
+        db.query(models.WikiEntry).filter(models.WikiEntry.user_id == user_id, models.WikiEntry.title == title).first()
+    )
     if existing_entry:
         merged_content = simple_completion(
             messages=[
@@ -93,6 +102,7 @@ def create_or_update_via_search(db: DBSession, keyword: str, question: str) -> m
             content=content,
             tags=data.get("tags", []),
             related_titles=data.get("related", []),
+            user_id=user_id,
         )
         db.add(entry)
 
