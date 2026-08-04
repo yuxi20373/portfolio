@@ -216,6 +216,20 @@ export default {
 
     const weatherHasData = computed(() => !!weather.value && weather.value.will_rain !== null);
 
+    // One decorative image per calendar month (01-12), cycling as the user
+    // flips through prevMonth/nextMonth - sits in the small gap right next
+    // to the month switcher.
+    const monthIconSrc = computed(() => `assets/images/month-${String(month.value).padStart(2, "0")}.png`);
+    function onMonthIconError(e) {
+      e.target.style.display = "none";
+    }
+    // monthIconSrc changes every time the month flips - undo a previous
+    // month's 404 hide once a later month's image loads fine, same as
+    // HomeView.js's light/dark toggle.
+    function onMonthIconLoad(e) {
+      e.target.style.display = "";
+    }
+
     onMounted(async () => {
       await refresh();
       if (jumpDate) {
@@ -228,6 +242,7 @@ export default {
       year, month, counts, monthNotes, cells,
       selectedDate, daySessions, dayWikiEntries, dayNotes,
       weather, weatherLoading, weatherHasData,
+      monthIconSrc, onMonthIconError, onMonthIconLoad,
       showAddNote, newNoteTitle, newNoteContent, newNotePreview, newNoteHelp, savingNote,
       viewingNote, loadingNote,
       editingNote, editNoteTitle, editNoteContent, editNotePreview, editNoteHelp, savingNoteEdit,
@@ -245,6 +260,7 @@ export default {
         <button class="btn secondary" @click="prevMonth">‹</button>
         <h2>{{ year }}-{{ String(month).padStart(2,'0') }}</h2>
         <button class="btn secondary" @click="nextMonth">›</button>
+        <img class="month-icon" :src="monthIconSrc" alt="" @error="onMonthIconError" @load="onMonthIconLoad" />
       </div>
 
       <div v-if="selectedDate && (weatherLoading || weatherHasData)" class="weather-widget" :title="weather && weather.precipitation_probability != null ? 'Taichung · ' + weather.precipitation_probability + '% chance of rain' : 'Taichung'">

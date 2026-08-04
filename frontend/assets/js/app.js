@@ -75,7 +75,7 @@ const App = {
 
     <img class="corner-mascot" :src="cornerSrc" alt="" @error="onCornerImgError" @load="onCornerImgLoad" />
 
-    <button class="home-float corner-home" title="Home" @click="goHome">
+    <button v-if="store.view !== 'home'" class="home-float corner-home" title="Home" @click="goHome">
       <span class="home-float-inner">
         <span class="home-float-fallback" v-html="icons.home"></span>
         <img src="assets/images/home.png" alt="" @error="onCornerImgError" />

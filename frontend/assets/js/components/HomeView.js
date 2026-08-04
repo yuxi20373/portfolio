@@ -7,10 +7,12 @@ import { api } from "../api.js";
 // in style.css). x/y/size are numbers (percent / px) rather than
 // pre-built CSS strings so handlePointerMove below can do distance math
 // against them directly.
+// Stickers 1-3 have a dark-mode variant (darkSrc); sticker 4 doesn't, so it
+// keeps its light-mode image in both themes. See stickerSrc() below.
 const STICKERS = [
-  { id: 1, src: "assets/images/sticker-1.png", x: 80, y: -2, size: 192, rotate: -12, delay: 0.2 }, // 160 * 1.2
-  { id: 2, src: "assets/images/sticker-2.png", x: -14, y: 55, size: 144, rotate: 10, delay: 1.4 }, // 180 * 0.8
-  { id: 3, src: "assets/images/sticker-3.png", x: 40, y: 80, size: 176, rotate: -6, delay: 2.4 },
+  { id: 1, src: "assets/images/sticker-1.png", darkSrc: "assets/images/sticker-1-dark.png", x: 80, y: -2, size: 192, rotate: -12, delay: 0.2 }, // 160 * 1.2
+  { id: 2, src: "assets/images/sticker-2.png", darkSrc: "assets/images/sticker-2-dark.png", x: -14, y: 55, size: 144, rotate: 10, delay: 1.4 }, // 180 * 0.8
+  { id: 3, src: "assets/images/sticker-3.png", darkSrc: "assets/images/sticker-3-dark.png", x: 40, y: 80, size: 176, rotate: -6, delay: 2.4 },
   { id: 4, src: "assets/images/sticker-4.png", x: 8, y: 40, size: 140, rotate: 14, delay: 3.2 },
 ];
 
@@ -46,6 +48,9 @@ export default {
     // that once the OTHER one loads fine, or it'd stay hidden forever.
     function onImgLoad(e) {
       e.target.style.display = "";
+    }
+    function stickerSrc(s) {
+      return store.theme === "dark" && s.darkSrc ? s.darkSrc : s.src;
     }
     function onHeroError(e) {
       e.target.style.display = "none";
@@ -130,6 +135,7 @@ export default {
       isRaining,
       heroSrc,
       stickers: STICKERS,
+      stickerSrc,
       heroWrap,
       pushOffsets,
       handlePointerMove,
@@ -143,9 +149,9 @@ export default {
 
       <span v-for="(s, i) in stickers" :key="s.id" class="home-sticker-wrap"
             :style="{ '--x': s.x + '%', '--y': s.y + '%', '--push-x': pushOffsets[i].x + 'px', '--push-y': pushOffsets[i].y + 'px' }">
-        <img class="home-sticker" :src="s.src" alt=""
+        <img class="home-sticker" :src="stickerSrc(s)" alt=""
              :style="{ '--size': s.size + 'px', '--rotate': s.rotate + 'deg', '--delay': s.delay + 's' }"
-             @error="onImgError" />
+             @error="onImgError" @load="onImgLoad" />
       </span>
 
       <button class="home-float home-float-light" title="Toggle light / dark mode" @click="store.toggleTheme()">
