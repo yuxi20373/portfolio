@@ -1,4 +1,4 @@
-const { ref, computed, onMounted } = window.Vue;
+const { ref, computed } = window.Vue;
 import { store } from "../store.js";
 import { icons } from "../icons.js";
 import { api } from "../api.js";
@@ -35,22 +35,29 @@ export default {
       e.target.parentElement.classList.add("home-hero-fallback");
     }
 
-    // Today's weather, fetched once on load - drives the hero art and the
-    // weather float's background (see isRaining/heroSrc below). Same
-    // will_rain/weather_code shape as CalendarView.js's weather widget;
-    // not shared via the store since this is the only other place that
-    // needs it and only for a one-off "today" lookup.
+    // Today's weather - NOT fetched automatically. Nothing about the hero
+    // or the weather float changes until the user clicks the weather float
+    // (onWeatherClick below), which fetches once and then reveals it.
     const weather = ref(null);
-    onMounted(async () => {
-      const d = new Date();
-      const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      weather.value = await api.get(`/api/weather?date=${todayStr}`).catch(() => null);
-    });
+    const weatherRevealed = ref(false);
 
-    const isRaining = computed(() => !!weather.value && weather.value.will_rain === true);
+    async function onWeatherClick() {
+      if (!weather.value) {
+        const d = new Date();
+        const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        weather.value = await api.get(`/api/weather?date=${todayStr}`).catch(() => null);
+      }
+      weatherRevealed.value = true;
+    }
+
+    const isRaining = computed(() => weatherRevealed.value && !!weather.value && weather.value.will_rain === true);
     // WMO 0/1 = clear / mainly clear
     const isSunny = computed(
-      () => !!weather.value && !isRaining.value && [0, 1].includes(weather.value.weather_code),
+      () =>
+        weatherRevealed.value &&
+        !!weather.value &&
+        !isRaining.value &&
+        [0, 1].includes(weather.value.weather_code),
     );
     const heroSrc = computed(() => {
       if (isRaining.value) return "assets/images/rainy.png";
@@ -68,6 +75,7 @@ export default {
       onImgError,
       onImgLoad,
       onHeroError,
+      onWeatherClick,
       isRaining,
       heroSrc,
     };
@@ -78,13 +86,13 @@ export default {
       <img class="home-hero-img" :src="heroSrc" alt="" @error="onHeroError" />
 
       <img class="home-sticker home-sticker-1" src="assets/images/sticker-1.png" alt=""
-           style="--x: -6%; --y: 4%; --size: 40px; --rotate: -12deg; --delay: .2s"
+           style="--x: 80%; --y: -2%; --size: 120px; --rotate: -12deg; --delay: .2s"
            @error="onImgError" />
       <img class="home-sticker home-sticker-2" src="assets/images/sticker-2.png" alt=""
-           style="--x: 92%; --y: 40%; --size: 36px; --rotate: 10deg; --delay: 1.4s"
+           style="--x: -14%; --y: 55%; --size: 108px; --rotate: 10deg; --delay: 1.4s"
            @error="onImgError" />
       <img class="home-sticker home-sticker-3" src="assets/images/sticker-3.png" alt=""
-           style="--x: 6%; --y: 90%; --size: 44px; --rotate: -6deg; --delay: 2.4s"
+           style="--x: 40%; --y: 100%; --size: 132px; --rotate: -6deg; --delay: 2.4s"
            @error="onImgError" />
 
       <button class="home-float home-float-light" title="Toggle light / dark mode" @click="store.toggleTheme()">
@@ -115,7 +123,7 @@ export default {
         </span>
       </button>
 
-      <button class="home-float home-float-weather" :class="{ 'home-float-weather-rain': isRaining }" title="Check today's weather" @click="goCalendar">
+      <button class="home-float home-float-weather" :class="{ 'home-float-weather-rain': isRaining }" title="Check today's weather" @click="onWeatherClick">
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="icons.cloud"></span>
           <img src="assets/images/icon-weather.png" alt="" @error="onImgError" />

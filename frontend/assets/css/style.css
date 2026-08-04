@@ -1291,7 +1291,7 @@ select {
   .home-float-calendar { right: -10px; }
   .home-float-news { right: -8px; }
   .home-float-weather { left: -4px; }
-  .home-sticker-1, .home-sticker-2, .home-sticker-3 { width: 30px; height: 30px; }
+  .home-sticker-1, .home-sticker-2, .home-sticker-3 { width: 72px; height: 72px; }
 
   .news-featured-card { flex-direction: column; padding: 10px; }
   .news-carousel-arrow { display: none; } /* dots below still let you switch featured articles */
