@@ -3,6 +3,22 @@ import { store } from "../store.js";
 import { icons } from "../icons.js";
 import { api } from "../api.js";
 
+// Decorative stickers around the hero (see .home-sticker-wrap/.home-sticker
+// in style.css). x/y/size are numbers (percent / px) rather than
+// pre-built CSS strings so handlePointerMove below can do distance math
+// against them directly.
+const STICKERS = [
+  { id: 1, src: "assets/images/sticker-1.png", x: 80, y: -2, size: 160, rotate: -12, delay: 0.2 },
+  { id: 2, src: "assets/images/sticker-2.png", x: -14, y: 55, size: 180, rotate: 10, delay: 1.4 },
+  { id: 3, src: "assets/images/sticker-3.png", x: 40, y: 80, size: 176, rotate: -6, delay: 2.4 },
+];
+
+// How close the pointer has to get (px, measured from the sticker's own
+// anchor point) before it starts sliding away, and how far it slides at
+// maximum closeness. Push strength ramps smoothly between the two.
+const PROXIMITY_RADIUS = 110;
+const PUSH_DISTANCE = 60;
+
 export default {
   setup() {
     function goWiki() {
@@ -65,6 +81,40 @@ export default {
       return "assets/images/hero.png";
     });
 
+    // "Slide away when the pointer gets close" - pointermove covers mouse
+    // hover AND touch-drag in one listener, but touch has no true
+    // pre-contact "approaching" concept on the web (no event fires until
+    // the finger actually lands and moves), so on mobile this triggers as
+    // soon as a touch starts near a sticker rather than truly beforehand.
+    const heroWrap = ref(null);
+    const pushOffsets = ref(STICKERS.map(() => ({ x: 0, y: 0 })));
+
+    function handlePointerMove(e) {
+      const wrap = heroWrap.value;
+      if (!wrap) return;
+      const rect = wrap.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+
+      STICKERS.forEach((s, i) => {
+        const sx = (s.x / 100) * rect.width;
+        const sy = (s.y / 100) * rect.height;
+        const dx = sx - px;
+        const dy = sy - py;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        if (dist < PROXIMITY_RADIUS) {
+          const strength = 1 - dist / PROXIMITY_RADIUS;
+          pushOffsets.value[i] = { x: (dx / dist) * PUSH_DISTANCE * strength, y: (dy / dist) * PUSH_DISTANCE * strength };
+        } else {
+          pushOffsets.value[i] = { x: 0, y: 0 };
+        }
+      });
+    }
+
+    function resetPush() {
+      pushOffsets.value = STICKERS.map(() => ({ x: 0, y: 0 }));
+    }
+
     return {
       store,
       icons,
@@ -78,22 +128,24 @@ export default {
       onWeatherClick,
       isRaining,
       heroSrc,
+      stickers: STICKERS,
+      heroWrap,
+      pushOffsets,
+      handlePointerMove,
+      resetPush,
     };
   },
   template: `
   <div class="main-panel home-panel">
-    <div class="home-hero-wrap">
+    <div class="home-hero-wrap" ref="heroWrap" @pointermove="handlePointerMove" @pointerleave="resetPush">
       <img class="home-hero-img" :src="heroSrc" alt="" @error="onHeroError" />
 
-      <img class="home-sticker home-sticker-1" src="assets/images/sticker-1.png" alt=""
-           style="--x: 80%; --y: -2%; --size: 120px; --rotate: -12deg; --delay: .2s"
-           @error="onImgError" />
-      <img class="home-sticker home-sticker-2" src="assets/images/sticker-2.png" alt=""
-           style="--x: -14%; --y: 55%; --size: 108px; --rotate: 10deg; --delay: 1.4s"
-           @error="onImgError" />
-      <img class="home-sticker home-sticker-3" src="assets/images/sticker-3.png" alt=""
-           style="--x: 40%; --y: 100%; --size: 132px; --rotate: -6deg; --delay: 2.4s"
-           @error="onImgError" />
+      <span v-for="(s, i) in stickers" :key="s.id" class="home-sticker-wrap"
+            :style="{ '--x': s.x + '%', '--y': s.y + '%', '--push-x': pushOffsets[i].x + 'px', '--push-y': pushOffsets[i].y + 'px' }">
+        <img class="home-sticker" :src="s.src" alt=""
+             :style="{ '--size': s.size + 'px', '--rotate': s.rotate + 'deg', '--delay': s.delay + 's' }"
+             @error="onImgError" />
+      </span>
 
       <button class="home-float home-float-light" title="Toggle light / dark mode" @click="store.toggleTheme()">
         <span class="home-float-inner">
