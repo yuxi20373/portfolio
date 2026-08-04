@@ -17,6 +17,7 @@ bcrypt==4.2.0
 
 # --- LLM providers ---
 openai>=1.50.0
+anthropic>=0.69.0
 
 # --- news digest: scraper + daily scheduler ---
 beautifulsoup4==4.12.3
@@ -30,6 +31,7 @@ deepagents
 langchain-core
 langchain-groq
 langchain-openai
+langchain-anthropic
 
 # --- agent tools ---
 ddgs           # key-less web search fallback (DuckDuckGo)

@@ -38,12 +38,20 @@ def build_chat_model(model_name: str = None):
     """Build the plain LangChain chat model for AGENT_MODEL_PROVIDER. Shared
     by the deep agent (below) and by the default, non-agent chat path
     (app/agent/simple_chat.py), so both talk to the same configured model.
-    `model_name` overrides settings.openai_model (ignored for groq, which
-    isn't part of the user-facing model catalog/switcher)."""
+    `model_name` overrides settings.openai_model (ignored for groq/anthropic,
+    which aren't part of the user-facing model catalog/switcher - that's
+    OpenAI-only, see app/agent/model_catalog.py)."""
     if settings.agent_model_provider == "openai":
         from langchain_openai import ChatOpenAI
 
         return ChatOpenAI(model=model_name or settings.openai_model, api_key=settings.openai_api_key)
+
+    if settings.agent_model_provider == "anthropic":
+        from langchain_anthropic import ChatAnthropic
+
+        return ChatAnthropic(
+            model=settings.anthropic_model, api_key=settings.anthropic_api_key, max_tokens=8192
+        )
 
     from langchain_groq import ChatGroq
 
@@ -71,4 +79,6 @@ def default_model_name(model_name: str = None) -> str:
     doesn't report a model name back on the message itself."""
     if settings.agent_model_provider == "openai":
         return model_name or settings.openai_model
+    if settings.agent_model_provider == "anthropic":
+        return settings.anthropic_model
     return settings.groq_model

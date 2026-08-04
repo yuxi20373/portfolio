@@ -9,10 +9,12 @@ know or care which backend is configured.
 """
 
 from ..config import settings
-from . import groq_client, openai_client
+from . import anthropic_client, groq_client, openai_client
 
 
 def simple_completion(messages: list, temperature: float = 0.3) -> str:
+    if settings.llm_provider == "anthropic":
+        return anthropic_client.chat_completion(messages, model=settings.anthropic_model)
     if settings.llm_provider == "openai":
         return openai_client.chat_completion(messages, model=settings.openai_model)
     return groq_client.chat_completion(messages, model=settings.groq_summarize_model, temperature=temperature)
