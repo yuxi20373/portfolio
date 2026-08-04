@@ -1984,6 +1984,7 @@ select {
   transform: translate(var(--push-x, 0px), var(--push-y, 0px));
   transition: transform .7s cubic-bezier(.19, 1, .22, 1);
 }
+
 .home-sticker {
   display: block;
   width: var(--size, 40px);
