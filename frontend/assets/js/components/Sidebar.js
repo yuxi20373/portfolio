@@ -33,10 +33,6 @@ export default {
       store.runSearch(e.target.value);
     }
 
-    function logout() {
-      if (confirm("Log out?")) store.logout();
-    }
-
     async function startRename(s) {
       editingId.value = s.id;
       editingTitle.value = s.title;
@@ -154,7 +150,6 @@ export default {
       editingTitle,
       setView,
       onSearchInput,
-      logout,
       startRename,
       confirmRename,
       cancelRename,
@@ -178,12 +173,10 @@ export default {
   template: `
   <aside class="sidebar" :class="{open: store.sidebarOpen}">
     <div class="icon-nav">
-      <button class="icon-btn" :class="{active: store.view==='home'}" @click="setView('home')" title="Home" v-html="icons.home"></button>
       <button class="icon-btn" :class="{active: store.view==='chat'}" @click="setView('chat')" title="Chat" v-html="icons.chat"></button>
       <button class="icon-btn" :class="{active: store.view==='wiki'}" @click="setView('wiki')" title="Knowledge base" v-html="icons.wiki"></button>
       <button class="icon-btn" :class="{active: store.view==='calendar'}" @click="setView('calendar')" title="Calendar" v-html="icons.calendar"></button>
       <button class="icon-btn" :class="{active: store.view==='news'}" @click="setView('news')" title="News" v-html="icons.news"></button>
-      <button class="icon-btn icon-nav-logout" @click="logout" :title="'Log out (' + store.username + ')'" v-html="icons.logout"></button>
     </div>
 
     <template v-if="store.view === 'chat'">

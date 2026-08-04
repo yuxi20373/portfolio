@@ -8,9 +8,10 @@ import { api } from "../api.js";
 // pre-built CSS strings so handlePointerMove below can do distance math
 // against them directly.
 const STICKERS = [
-  { id: 1, src: "assets/images/sticker-1.png", x: 80, y: -2, size: 160, rotate: -12, delay: 0.2 },
+  { id: 1, src: "assets/images/sticker-1.png", x: 80, y: -2, size: 192, rotate: -12, delay: 0.2 }, // 160 * 1.2
   { id: 2, src: "assets/images/sticker-2.png", x: -14, y: 55, size: 144, rotate: 10, delay: 1.4 }, // 180 * 0.8
   { id: 3, src: "assets/images/sticker-3.png", x: 40, y: 80, size: 176, rotate: -6, delay: 2.4 },
+  { id: 4, src: "assets/images/sticker-4.png", x: 8, y: 40, size: 140, rotate: 14, delay: 3.2 },
 ];
 
 // How close the pointer has to get (px, measured from the sticker's own

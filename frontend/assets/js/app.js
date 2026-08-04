@@ -51,12 +51,20 @@ const App = {
       if (confirm("Log out?")) store.logout();
     }
 
-    return { store, icons, onCornerImgError, onCornerImgLoad, cornerSrc, onLogoutClick };
+    // Quick way back home from anywhere - the home page itself no longer has
+    // a sidebar drawer entry point for it (icon-nav dropped its home/logout
+    // buttons in favor of these two app-shell-level floats).
+    function goHome() {
+      store.closeSidebar();
+      store.view = "home";
+    }
+
+    return { store, icons, onCornerImgError, onCornerImgLoad, cornerSrc, onLogoutClick, goHome };
   },
   template: `
   <LoginView v-if="!store.loggedIn" />
   <div v-else class="app-shell">
-    <button class="mobile-menu-btn" :class="{ open: store.sidebarOpen }" title="Menu" @click="store.toggleSidebar()" v-html="store.sidebarOpen ? icons.chevronLeft : icons.chevronRight"></button>
+    <button v-if="store.view !== 'home'" class="mobile-menu-btn" :class="{ open: store.sidebarOpen }" title="Menu" @click="store.toggleSidebar()" v-html="store.sidebarOpen ? icons.chevronLeft : icons.chevronRight"></button>
     <div v-if="store.sidebarOpen" class="sidebar-backdrop" @click="store.closeSidebar()"></div>
     <Sidebar />
     <HomeView v-if="store.view === 'home'" />
@@ -66,6 +74,13 @@ const App = {
     <NewsView v-else-if="store.view === 'news'" />
 
     <img class="corner-mascot" :src="cornerSrc" alt="" @error="onCornerImgError" @load="onCornerImgLoad" />
+
+    <button class="home-float corner-home" title="Home" @click="goHome">
+      <span class="home-float-inner">
+        <span class="home-float-fallback" v-html="icons.home"></span>
+        <img src="assets/images/home.png" alt="" @error="onCornerImgError" />
+      </span>
+    </button>
 
     <button class="home-float corner-logout" title="Log out" @click="onLogoutClick">
       <span class="home-float-inner">
