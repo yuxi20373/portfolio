@@ -52,6 +52,11 @@ export default {
     function stickerSrc(s) {
       return store.theme === "dark" && s.darkSrc ? s.darkSrc : s.src;
     }
+    // Dark-mode sticker art reads much bigger than the light-mode originals
+    // at the same --size, so it's shrunk to 40% of the light-mode size.
+    function stickerSize(s) {
+      return store.theme === "dark" && s.darkSrc ? s.size * 0.4 : s.size;
+    }
     function onHeroError(e) {
       e.target.style.display = "none";
       e.target.parentElement.classList.add("home-hero-fallback");
@@ -136,6 +141,7 @@ export default {
       heroSrc,
       stickers: STICKERS,
       stickerSrc,
+      stickerSize,
       heroWrap,
       pushOffsets,
       handlePointerMove,
@@ -150,7 +156,7 @@ export default {
       <span v-for="(s, i) in stickers" :key="s.id" class="home-sticker-wrap"
             :style="{ '--x': s.x + '%', '--y': s.y + '%', '--push-x': pushOffsets[i].x + 'px', '--push-y': pushOffsets[i].y + 'px' }">
         <img class="home-sticker" :src="stickerSrc(s)" alt=""
-             :style="{ '--size': s.size + 'px', '--rotate': s.rotate + 'deg', '--delay': s.delay + 's' }"
+             :style="{ '--size': stickerSize(s) + 'px', '--rotate': s.rotate + 'deg', '--delay': s.delay + 's' }"
              @error="onImgError" @load="onImgLoad" />
       </span>
 

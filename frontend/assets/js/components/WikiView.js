@@ -43,6 +43,12 @@ export default {
       composing.value = false;
     }
 
+    // Same graceful-fallback pattern as HomeView.js's decorative images -
+    // if the PNG isn't there yet, just hide the broken <img>.
+    function onIconError(e) {
+      e.target.style.display = "none";
+    }
+
     async function onSearchFieldKeydown(e) {
       if (e.key !== "Enter") return;
       // Don't submit while an IME (e.g. typing Chinese) is still composing a candidate
@@ -112,6 +118,7 @@ export default {
       searchKeyword,
       searchQuestion,
       searching,
+      onIconError,
       onCompositionStart,
       onCompositionEnd,
       onSearchFieldKeydown,
@@ -132,6 +139,7 @@ export default {
   <div class="main-panel wiki-panel">
     <div class="wiki-toolbar">
       <button class="btn secondary" @click="showSearchBox = !showSearchBox">Search</button>
+      <img class="wiki-search-icon" src="assets/images/icon-search.png" alt="" @error="onIconError" />
       <template v-if="store.currentWikiEntry && !editing">
         <button class="btn secondary" @click="startEdit">Edit</button>
         <button class="btn secondary" @click="showAdjustDrawer = true">Adjust</button>

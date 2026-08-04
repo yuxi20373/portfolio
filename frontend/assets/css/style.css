@@ -167,17 +167,16 @@ body {
   z-index: 39;
 }
 
-/* Small branding image pinned to the bottom-right corner on every page -
+/* Small branding image pinned to the bottom-left corner on every page -
    rendered once at the app-shell level (see app.js), with a different PNG
    per view (corner-home.png, corner-chat.png, ... - see cornerSrc).
    Purely decorative - no click target, low z-index so it never sits above
-   the sidebar drawer/backdrop (39/40) or the mobile menu button (50).
-   bottom offset leaves room for .corner-logout sitting below it. */
+   the sidebar drawer/backdrop (39/40) or the mobile menu button (50). */
 .corner-mascot {
   position: fixed;
-  right: 12px;
-  bottom: 78px;
-  height: 30vh;
+  left: 12px;
+  bottom: 14px;
+  height: 60vh;
   width: auto;
   object-fit: contain;
   pointer-events: none;
@@ -185,19 +184,42 @@ body {
   filter: drop-shadow(0 10px 24px rgba(61, 57, 41, 0.2));
 }
 
-/* Quick logout, reachable from any page without opening the sidebar drawer
-   first (see app.js). Reuses .home-float's circle-button look (defined
-   further down) but overrides its position:absolute with :fixed - .home-float
+/* Quick logout/home, reachable from any page without opening the sidebar
+   drawer first (see app.js). Reuse .home-float's circle-button look (defined
+   further down) but override its position:absolute with :fixed - .home-float
    is normally positioned relative to .home-hero-wrap, which doesn't apply
-   here since this sits at the app-shell level, not inside HomeView. */
-.corner-logout {
+   here since these sit at the app-shell level, not inside HomeView.
+   .corner-logout sits well clear of .chat-input's send button, which is
+   pinned to the same bottom-right corner of the viewport. */
+.corner-home {
   position: fixed;
-  right: 14px;
-  bottom: 14px;
+  left: 14px;
+  top: 14px;
   z-index: 6;
   width: 52px;
   height: 52px;
   animation: none; /* reads more like a button when it isn't bobbing, same as .home-float-light */
+}
+
+.corner-logout {
+  position: fixed;
+  right: 14px;
+  bottom: 96px;
+  z-index: 6;
+  width: 52px;
+  height: 52px;
+  animation: none;
+}
+
+/* Pure PNG, no button chrome behind it - without this, .home-float-fallback's
+   white circle/border/shadow shows through any transparent area of the PNG
+   on top of it (the fallback SVG still works if the PNG 404s, just without
+   the circle backing it). */
+.corner-home .home-float-fallback,
+.corner-logout .home-float-fallback {
+  background: none;
+  border: none;
+  box-shadow: none;
 }
 
 /* ---------------- Sidebar ---------------- */
@@ -210,10 +232,6 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-.icon-nav-logout {
-  margin-left: auto;
 }
 
 .icon-nav {
@@ -913,9 +931,18 @@ body {
 
 .wiki-toolbar {
   display: flex;
+  align-items: center;
   gap: 10px;
   margin-bottom: 18px;
   flex-wrap: wrap;
+}
+
+/* Purely decorative, next to the Search button - hidden via onIconError
+   (see WikiView.js) until assets/images/icon-search.png is dropped in. */
+.wiki-search-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 
 .search-panel {
@@ -1160,6 +1187,14 @@ body {
 
 .between {
   justify-content: space-between;
+}
+
+/* One of 12 decorative images (month-01.png .. month-12.png), cycling with
+   the month switcher - see monthIconSrc in CalendarView.js. */
+.month-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .calendar-grid {
@@ -2162,16 +2197,23 @@ select {
 
 @media (max-width: 768px) {
   .corner-mascot {
-    height: 16vh; /* 30vh would swallow most of a phone screen */
-    right: 8px;
-    bottom: 62px; /* leaves room for .corner-logout below it */
+    height: 32vh; /* 60vh would swallow most of a phone screen */
+    left: 8px;
+    bottom: 8px;
+  }
+
+  .corner-home {
+    width: 44px;
+    height: 44px;
+    left: 8px;
+    top: 8px;
   }
 
   .corner-logout {
     width: 44px;
     height: 44px;
     right: 8px;
-    bottom: 8px;
+    bottom: 78px; /* clears .chat-input's send button, pinned to the same corner */
   }
 
   .mobile-menu-btn {
