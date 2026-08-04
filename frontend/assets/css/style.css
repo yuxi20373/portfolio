@@ -121,29 +121,42 @@ body {
   font-size: 12.5px;
 }
 
-/* Mobile-only hamburger button + drawer backdrop for the sidebar (see the
-   "open" class on .sidebar and the @media block at the end of this file).
-   Hidden on desktop - the sidebar is always visible there. */
+/* Mobile-only drawer handle + backdrop for the sidebar (see the "open"
+   class on .sidebar and the @media block at the end of this file). Hidden
+   on desktop - the sidebar is always visible there.
+
+   Styled as a tab attached to the left screen edge rather than a floating
+   top-left icon button - closed, it pokes out at left:0; open, it slides
+   to left: min(82vw, 320px), the exact same width expression .sidebar
+   uses, so it visually rides along on the drawer's own right edge. */
 .mobile-menu-btn {
   display: none;
   position: fixed;
-  top: 10px;
-  left: 10px;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
   z-index: 50;
-  width: 38px;
-  height: 38px;
+  width: 26px;
+  height: 56px;
   align-items: center;
   justify-content: center;
   background: var(--white);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-left: none;
+  border-radius: 0 10px 10px 0;
   color: var(--text);
   cursor: pointer;
+  transition: left .2s ease;
+  box-shadow: 2px 0 8px rgba(61, 57, 41, 0.12);
+}
+
+.mobile-menu-btn.open {
+  left: min(82vw, 320px);
 }
 
 .mobile-menu-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .sidebar-backdrop {
@@ -154,20 +167,37 @@ body {
   z-index: 39;
 }
 
-/* Small branding image pinned to the bottom-right corner on every page
-   (see app.js - it's rendered once at the app-shell level, not per-view).
+/* Small branding image pinned to the bottom-right corner on every page -
+   rendered once at the app-shell level (see app.js), with a different PNG
+   per view (corner-home.png, corner-chat.png, ... - see cornerSrc).
    Purely decorative - no click target, low z-index so it never sits above
-   the sidebar drawer/backdrop (39/40) or the mobile menu button (50). */
+   the sidebar drawer/backdrop (39/40) or the mobile menu button (50).
+   bottom offset leaves room for .corner-logout sitting below it. */
 .corner-mascot {
   position: fixed;
   right: 12px;
-  bottom: 12px;
+  bottom: 78px;
   height: 30vh;
   width: auto;
   object-fit: contain;
   pointer-events: none;
   z-index: 5;
   filter: drop-shadow(0 10px 24px rgba(61, 57, 41, 0.2));
+}
+
+/* Quick logout, reachable from any page without opening the sidebar drawer
+   first (see app.js). Reuses .home-float's circle-button look (defined
+   further down) but overrides its position:absolute with :fixed - .home-float
+   is normally positioned relative to .home-hero-wrap, which doesn't apply
+   here since this sits at the app-shell level, not inside HomeView. */
+.corner-logout {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 6;
+  width: 52px;
+  height: 52px;
+  animation: none; /* reads more like a button when it isn't bobbing, same as .home-float-light */
 }
 
 /* ---------------- Sidebar ---------------- */
@@ -2133,6 +2163,13 @@ select {
 @media (max-width: 768px) {
   .corner-mascot {
     height: 16vh; /* 30vh would swallow most of a phone screen */
+    right: 8px;
+    bottom: 62px; /* leaves room for .corner-logout below it */
+  }
+
+  .corner-logout {
+    width: 44px;
+    height: 44px;
     right: 8px;
     bottom: 8px;
   }

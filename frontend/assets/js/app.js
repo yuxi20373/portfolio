@@ -1,4 +1,4 @@
-const { createApp, watch } = window.Vue;
+const { createApp, computed, watch } = window.Vue;
 import { store } from "./store.js";
 import { icons } from "./icons.js";
 import LoginView from "./components/LoginView.js";
@@ -28,16 +28,35 @@ const App = {
 
     // Same graceful-fallback pattern as HomeView.js's decorative images -
     // if the PNG isn't there yet, just hide the broken <img>.
-    function onCornerMascotError(e) {
+    function onCornerImgError(e) {
       e.target.style.display = "none";
     }
+    // cornerSrc's :src changes on every view switch (unlike the logout
+    // button's static image) - if an earlier view's image 404'd and got
+    // hidden, undo that once a later view's image loads fine, same as
+    // HomeView.js's light/dark toggle.
+    function onCornerImgLoad(e) {
+      e.target.style.display = "";
+    }
 
-    return { store, icons, onCornerMascotError };
+    // One corner image per view (store.view is "home"/"chat"/"wiki"/
+    // "calendar"/"news") instead of a single shared corner.png - naming
+    // the files corner-<view>.png means a new view automatically gets a
+    // slot here with no code change.
+    const cornerSrc = computed(() => `assets/images/corner-${store.view}.png`);
+
+    // Quick logout from anywhere, without opening the sidebar drawer first
+    // (same confirm() the sidebar's own logout button uses).
+    function onLogoutClick() {
+      if (confirm("Log out?")) store.logout();
+    }
+
+    return { store, icons, onCornerImgError, onCornerImgLoad, cornerSrc, onLogoutClick };
   },
   template: `
   <LoginView v-if="!store.loggedIn" />
   <div v-else class="app-shell">
-    <button class="mobile-menu-btn" title="Menu" @click="store.toggleSidebar()" v-html="store.sidebarOpen ? icons.close : icons.menu"></button>
+    <button class="mobile-menu-btn" :class="{ open: store.sidebarOpen }" title="Menu" @click="store.toggleSidebar()" v-html="store.sidebarOpen ? icons.chevronLeft : icons.chevronRight"></button>
     <div v-if="store.sidebarOpen" class="sidebar-backdrop" @click="store.closeSidebar()"></div>
     <Sidebar />
     <HomeView v-if="store.view === 'home'" />
@@ -46,7 +65,14 @@ const App = {
     <CalendarView v-else-if="store.view === 'calendar'" />
     <NewsView v-else-if="store.view === 'news'" />
 
-    <img class="corner-mascot" src="assets/images/corner.png" alt="" @error="onCornerMascotError" />
+    <img class="corner-mascot" :src="cornerSrc" alt="" @error="onCornerImgError" @load="onCornerImgLoad" />
+
+    <button class="home-float corner-logout" title="Log out" @click="onLogoutClick">
+      <span class="home-float-inner">
+        <span class="home-float-fallback" v-html="icons.logout"></span>
+        <img src="assets/images/logout.png" alt="" @error="onCornerImgError" />
+      </span>
+    </button>
   </div>
   `,
 };
