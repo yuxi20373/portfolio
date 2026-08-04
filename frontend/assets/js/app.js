@@ -25,7 +25,14 @@ const App = {
     watch(() => store.loggedIn, (loggedIn) => {
       if (loggedIn) loadAccountData();
     });
-    return { store, icons };
+
+    // Same graceful-fallback pattern as HomeView.js's decorative images -
+    // if the PNG isn't there yet, just hide the broken <img>.
+    function onCornerMascotError(e) {
+      e.target.style.display = "none";
+    }
+
+    return { store, icons, onCornerMascotError };
   },
   template: `
   <LoginView v-if="!store.loggedIn" />
@@ -38,6 +45,8 @@ const App = {
     <WikiView v-else-if="store.view === 'wiki'" />
     <CalendarView v-else-if="store.view === 'calendar'" />
     <NewsView v-else-if="store.view === 'news'" />
+
+    <img class="corner-mascot" src="assets/images/corner.png" alt="" @error="onCornerMascotError" />
   </div>
   `,
 };

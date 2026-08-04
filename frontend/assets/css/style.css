@@ -154,6 +154,22 @@ body {
   z-index: 39;
 }
 
+/* Small branding image pinned to the bottom-right corner on every page
+   (see app.js - it's rendered once at the app-shell level, not per-view).
+   Purely decorative - no click target, low z-index so it never sits above
+   the sidebar drawer/backdrop (39/40) or the mobile menu button (50). */
+.corner-mascot {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  height: 30vh;
+  width: auto;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 5;
+  filter: drop-shadow(0 10px 24px rgba(61, 57, 41, 0.2));
+}
+
 /* ---------------- Sidebar ---------------- */
 
 .sidebar {
@@ -1836,6 +1852,7 @@ select {
   object-fit: contain;
   display: block;
   filter: drop-shadow(0 12px 30px rgba(61, 57, 41, 0.18));
+  transform: scale(.7); /* hero/rainy/sunny all render 30% smaller than the wrap box */
 }
 
 .home-hero-wrap.home-hero-fallback {
@@ -2114,6 +2131,12 @@ select {
    and tightening up spacing/grids so nothing overflows a phone screen. */
 
 @media (max-width: 768px) {
+  .corner-mascot {
+    height: 16vh; /* 30vh would swallow most of a phone screen */
+    right: 8px;
+    bottom: 8px;
+  }
+
   .mobile-menu-btn {
     display: flex;
   }
@@ -2152,7 +2175,7 @@ select {
   }
 
   .home-panel {
-    padding: 56px 16px 24px;
+    padding: 68px 16px 24px; /* a bit more than the other views' 56px - see .home-float-wiki below */
     gap: 24px;
   }
 
@@ -2206,6 +2229,10 @@ select {
   }
 
   .home-float-wiki {
+    /* Desktop's top:14% lands close to the fixed hamburger/X button
+       (top-left, 38px square) once the hero shrinks to mobile size -
+       push it down further so there's real clearance between them. */
+    top: 24%;
     left: -10px;
   }
 
