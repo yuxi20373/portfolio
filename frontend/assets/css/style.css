@@ -9,6 +9,7 @@
   --accent-soft: #F3E3DB;
   --active-item-bg: #ECE6DA;
   --white: #FFFFFF;
+  --weather-rain-bg: #D8D5CC;
 }
 
 /* Dark mode - toggled via <html data-theme="dark">, see store.js
@@ -25,6 +26,7 @@
   --accent-soft: #3B2C22;
   --active-item-bg: #362F24;
   --white: #2C2720;
+  --weather-rain-bg: #4A4438;
 }
 
 body, .btn, .msg, .card, input, textarea, select {
@@ -1072,7 +1074,7 @@ select {
 
 .home-hero-wrap {
   position: relative;
-  width: min(480px, 82vw);
+  width: min(576px, 82vw); /* 480px * 1.2 */
   aspect-ratio: 1;
 }
 .home-hero-wrap::before {
@@ -1158,11 +1160,40 @@ select {
 }
 .home-float-wiki { top: 14%; left: -30px; animation-delay: 0s; }
 .home-float-calendar { top: 48%; right: -34px; animation-delay: .9s; }
+.home-float-news { bottom: 18%; right: -30px; animation-delay: 1.35s; }
 .home-float-weather { bottom: 6%; left: -20px; animation-delay: 1.8s; }
+
+/* Rainy today - swap just the weather float's circle to a light grey,
+   everything else (icon color, other floats) stays as-is. See
+   HomeView.js's isRaining. */
+.home-float-weather-rain .home-float-fallback { background: var(--weather-rain-bg); }
 
 @keyframes home-float-bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
+}
+
+/* Purely decorative little PNGs scattered around the hero (see
+   HomeView.js) - no click target, no SVG fallback (if the file isn't
+   there yet, onImgError just hides it). Position/size/rotation are set
+   per-instance via inline custom properties instead of one named class
+   each, since these are meant to be loosely placed and easy to add to /
+   move around without touching CSS. */
+.home-sticker {
+  position: absolute;
+  top: var(--y, 0);
+  left: var(--x, 0);
+  width: var(--size, 40px);
+  height: var(--size, 40px);
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 14px rgba(61, 57, 41, 0.22));
+  animation: home-sticker-bob 5s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes home-sticker-bob {
+  0%, 100% { transform: translateY(0) rotate(var(--rotate, 0deg)); }
+  50% { transform: translateY(-8px) rotate(var(--rotate, 0deg)); }
 }
 
 .home-cta { }
@@ -1253,12 +1284,14 @@ select {
   .cal-dow { font-size: 10px; }
   .cal-note-chip { display: none; } /* no room on a phone-width cell; the count badge still shows */
 
-  .home-hero-wrap { width: min(280px, 68vw); }
+  .home-hero-wrap { width: min(336px, 82vw); } /* 280px/68vw * 1.2 */
   .home-float { width: 52px; height: 52px; }
   .home-float-light { width: 42px; height: 42px; top: -20px; margin-left: -21px; }
   .home-float-wiki { left: -10px; }
   .home-float-calendar { right: -10px; }
+  .home-float-news { right: -8px; }
   .home-float-weather { left: -4px; }
+  .home-sticker-1, .home-sticker-2, .home-sticker-3 { width: 30px; height: 30px; }
 
   .news-featured-card { flex-direction: column; padding: 10px; }
   .news-carousel-arrow { display: none; } /* dots below still let you switch featured articles */
