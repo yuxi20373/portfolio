@@ -4,6 +4,7 @@ import { store } from "../store.js";
 import { icons } from "../icons.js";
 import { renderMarkdown } from "../markdown.js";
 import DrawerShell from "./DrawerShell.js";
+import ColorPicker from "./ColorPicker.js";
 
 const MARKDOWN_HELP = `
   <div><code># Heading</code></div>
@@ -16,7 +17,7 @@ const MARKDOWN_HELP = `
 `;
 
 export default {
-  components: { DrawerShell },
+  components: { DrawerShell, ColorPicker },
   setup() {
     // If the home page's note mini calendar asked to jump to a specific
     // date, open that date's month instead of the current month.
@@ -27,7 +28,6 @@ export default {
     const month = ref(initial.getMonth() + 1);
     const counts = ref({});
     const monthNotes = ref({}); // dateStr -> [title, ...]
-    const rainDays = ref(new Set()); // dateStr set, for the light-blue cell background
 
     const selectedDate = ref(null);
     const daySessions = ref([]);
@@ -43,6 +43,7 @@ export default {
     const newNoteTitle = ref("");
     const newNoteContent = ref("");
     const newNoteTags = ref("");
+    const newNoteColor = ref("");
     const newNotePreview = ref(false);
     const newNoteHelp = ref(false);
     const savingNote = ref(false);
@@ -57,6 +58,7 @@ export default {
     const editNoteTitle = ref("");
     const editNoteContent = ref("");
     const editNoteTags = ref("");
+    const editNoteColor = ref("");
     const editNotePreview = ref(false);
     const editNoteHelp = ref(false);
     const savingNoteEdit = ref(false);
@@ -79,7 +81,6 @@ export default {
       const res = await api.get(`/api/calendar?year=${year.value}&month=${month.value}`);
       counts.value = res.counts || {};
       monthNotes.value = res.notes || {};
-      rainDays.value = new Set(res.rain_days || []);
       if (selectedDate.value) await selectDay(selectedDate.value);
     }
 
@@ -128,6 +129,7 @@ export default {
       newNoteTitle.value = "";
       newNoteContent.value = "";
       newNoteTags.value = "";
+      newNoteColor.value = "";
       newNotePreview.value = false;
       newNoteHelp.value = false;
       newNoteTemplateId.value = "";
@@ -150,6 +152,7 @@ export default {
           title: newNoteTitle.value.trim(),
           content: newNoteContent.value,
           tags: newNoteTags.value.split(",").map((t) => t.trim()).filter(Boolean),
+          color: newNoteColor.value,
           date: selectedDate.value,
         });
         showAddNote.value = false;
@@ -177,6 +180,7 @@ export default {
       editNoteTitle.value = store.viewingNote.title;
       editNoteContent.value = store.viewingNote.content;
       editNoteTags.value = (store.viewingNote.tags || []).join(", ");
+      editNoteColor.value = store.viewingNote.color || "";
       editNotePreview.value = false;
       editNoteHelp.value = false;
       editingNote.value = true;
@@ -194,6 +198,7 @@ export default {
           title: editNoteTitle.value.trim(),
           content: editNoteContent.value,
           tags: editNoteTags.value.split(",").map((t) => t.trim()).filter(Boolean),
+          color: editNoteColor.value,
         });
         editingNote.value = false;
         await refresh(); // title may have changed - update month grid / day list too
@@ -243,12 +248,12 @@ export default {
 
     return {
       store,
-      year, month, counts, monthNotes, rainDays, cells,
+      year, month, counts, monthNotes, cells,
       selectedDate, daySessions, dayWikiEntries, dayNotes,
       weather, weatherLoading, weatherHasData,
-      showAddNote, newNoteTitle, newNoteContent, newNoteTags, newNotePreview, newNoteHelp, savingNote,
+      showAddNote, newNoteTitle, newNoteContent, newNoteTags, newNoteColor, newNotePreview, newNoteHelp, savingNote,
       newNoteTemplateId, applyNoteTemplate,
-      editingNote, editNoteTitle, editNoteContent, editNoteTags, editNotePreview, editNoteHelp, savingNoteEdit,
+      editingNote, editNoteTitle, editNoteContent, editNoteTags, editNoteColor, editNotePreview, editNoteHelp, savingNoteEdit,
       icons, renderMarkdown, MARKDOWN_HELP,
       refresh, selectDay, prevMonth, nextMonth, openSession, openWikiEntry,
       toggleAddNote, saveNote, openNote, closeNote,
@@ -284,7 +289,7 @@ export default {
     <div class="calendar-grid">
       <div v-for="d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="d" class="cal-dow">{{ d }}</div>
       <div v-for="(cell, i) in cells" :key="i"
-           class="cal-cell" :class="{empty: !cell, today: cell && cell.isToday, selected: cell && cell.dateStr === selectedDate, rain: cell && rainDays.has(cell.dateStr)}"
+           class="cal-cell" :class="{empty: !cell, today: cell && cell.isToday, selected: cell && cell.dateStr === selectedDate}"
            @click="cell && selectDay(cell.dateStr)">
         <template v-if="cell">
           <div class="cal-cell-top">
@@ -307,7 +312,10 @@ export default {
 
       <div v-if="showAddNote" class="note-editor">
         <input type="text" v-model="newNoteTitle" class="note-editor-title-input" placeholder="Note title" />
-        <input type="text" v-model="newNoteTags" class="note-editor-title-input" placeholder="Tags (comma separated)" />
+        <div class="row" style="gap:8px; align-items:center; margin-bottom:8px;">
+          <input type="text" v-model="newNoteTags" class="note-editor-title-input" style="flex:1; margin-bottom:0;" placeholder="Tags (comma separated)" />
+          <ColorPicker v-model="newNoteColor" />
+        </div>
         <div class="note-editor-toolbar">
           <select v-if="store.noteTemplates.length" class="note-template-select" v-model="newNoteTemplateId" @change="applyNoteTemplate">
             <option value="" disabled>Apply template…</option>
@@ -328,7 +336,7 @@ export default {
       </div>
 
       <div v-if="!showAddNote && !dayNotes.length" class="hint">No notes on this day</div>
-      <div v-for="n in dayNotes" :key="n.id" class="day-card clickable" @click="openNote(n.id)">
+      <div v-for="n in dayNotes" :key="n.id" class="day-card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id)">
         <div class="day-card-title">{{ n.title }}</div>
       </div>
 
@@ -357,7 +365,10 @@ export default {
       <template v-else-if="store.viewingNote">
         <div v-if="editingNote" class="note-editor">
           <input type="text" v-model="editNoteTitle" class="note-editor-title-input" placeholder="Note title" />
-          <input type="text" v-model="editNoteTags" class="note-editor-title-input" placeholder="Tags (comma separated)" />
+          <div class="row" style="gap:8px; align-items:center; margin-bottom:8px;">
+            <input type="text" v-model="editNoteTags" class="note-editor-title-input" style="flex:1; margin-bottom:0;" placeholder="Tags (comma separated)" />
+            <ColorPicker v-model="editNoteColor" />
+          </div>
           <div class="note-editor-toolbar">
             <button class="icon-btn" title="Preview" :class="{active: editNotePreview}" @click="editNotePreview = !editNotePreview" v-html="icons.eye"></button>
             <div class="note-help-wrap">

@@ -22,12 +22,16 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-5-mini"
 
+    # Anthropic (Claude) - optional alternative provider
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-opus-5"
+
     # Which provider powers lightweight one-shot calls (title generation,
     # semantic search ranking, wiki summarization, memory compaction)
-    llm_provider: str = "groq"  # "groq" | "openai"
+    llm_provider: str = "groq"  # "groq" | "openai" | "anthropic"
 
     # Which provider powers the interactive deep agent (the actual chat)
-    agent_model_provider: str = "groq"  # "groq" | "openai"
+    agent_model_provider: str = "groq"  # "groq" | "openai" | "anthropic"
 
     # Web search tool used by the agent. If unset, falls back to a key-less
     # DuckDuckGo search instead of Tavily.

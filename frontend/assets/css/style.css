@@ -10,7 +10,11 @@
   --active-item-bg: #ECE6DA;
   --white: #FFFFFF;
   --weather-rain-bg: #D8D5CC;
-  --cal-rain-bg: #DCEEFB;
+  /* Note colors (see Note.color / ColorPicker.js) - pastel tints that stay
+     in the same warm/muted family as --accent-soft. */
+  --note-color-peach: #F3D9C4;
+  --note-color-sage: #DCE8D3;
+  --note-color-sky: #D6E6F5;
 }
 
 /* Dark mode - toggled via <html data-theme="dark">, see store.js
@@ -28,7 +32,9 @@
   --active-item-bg: #362F24;
   --white: #2C2720;
   --weather-rain-bg: #4A4438;
-  --cal-rain-bg: #1E3A52;
+  --note-color-peach: #4A3626;
+  --note-color-sage: #2E3B29;
+  --note-color-sky: #243A4A;
 }
 
 body,
@@ -438,9 +444,7 @@ body {
   width: 26px;
   height: 26px;
   flex-shrink: 0;
-  border-radius: 8px;
-  background: var(--accent);
-  color: #fff;
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1113,7 +1117,9 @@ body {
 }
 
 .search-panel {
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
   border: 1px solid var(--accent);
   background: var(--accent-soft);
   border-radius: 8px;
@@ -1121,16 +1127,20 @@ body {
   margin-bottom: 18px;
 }
 
-/* Purely decorative - invisible until you hover the panel, then fades in
-   in the top-right corner. Hidden via onIconError (see WikiView.js) until
-   assets/images/icon-search.png is dropped in. */
+.search-panel-fields {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Purely decorative - sits beside the fields, invisible until you hover the
+   panel, then fades in. Hidden via onIconError (see WikiView.js) until
+   assets/images/icon-search.png is dropped in. Reserves its layout space
+   even while invisible, so nothing shifts when it fades in. */
 .wiki-search-icon {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 72px;
-  height: 72px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
+  flex-shrink: 0;
   opacity: 0;
   pointer-events: none;
   transition: opacity .15s ease;
@@ -1270,6 +1280,15 @@ body {
   color: inherit;
   width: 16px;
   height: 16px;
+}
+
+.notes-tag-manage > span {
+  cursor: pointer;
+}
+
+.notes-sort-toggle {
+  display: inline-flex;
+  gap: 6px;
 }
 
 .markdown-body {
@@ -1428,12 +1447,6 @@ body {
   border-color: var(--accent);
 }
 
-/* Comes before .selected in source order so a selected rainy day still
-   reads as "selected" (background wins on equal specificity). */
-.cal-cell.rain {
-  background: var(--cal-rain-bg);
-}
-
 .cal-cell.selected {
   background: var(--accent-soft);
   border-color: var(--accent);
@@ -1530,7 +1543,7 @@ body {
 
 /* Notes */
 
-/* Note drawer (see DrawerShell's `wide` prop) - text is +35% over the
+/* Note drawer (see DrawerShell's `wide` prop) - text is +10% over the
    normal .markdown-body/.tag/date sizes for easier reading at that width. */
 .note-detail-header {
   display: flex;
@@ -1543,7 +1556,7 @@ body {
   margin: 0;
   min-width: 0;
   overflow-wrap: break-word;
-  font-size: 32px;
+  font-size: 26px;
 }
 
 .note-detail-actions {
@@ -1553,17 +1566,17 @@ body {
 }
 
 .note-detail-date {
-  font-size: 16px;
+  font-size: 13px;
   color: var(--text-muted);
   margin-top: 4px;
 }
 
 .note-detail .tag {
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .note-detail .markdown-body {
-  font-size: 19.5px;
+  font-size: 16px;
 }
 
 .note-divider {
@@ -1606,6 +1619,56 @@ body {
 .note-template-select {
   margin-right: auto;
   max-width: 55%;
+}
+
+/* Color picker (see ColorPicker.js) - sits beside the Tags field in every
+   note create/edit form. */
+.note-color-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.color-swatch.selected {
+  border-color: var(--accent);
+}
+
+.note-color-peach {
+  background-color: var(--note-color-peach);
+}
+
+.note-color-sage {
+  background-color: var(--note-color-sage);
+}
+
+.note-color-sky {
+  background-color: var(--note-color-sky);
+}
+
+/* Card/list tint for a note's chosen color - see NOTE_COLORS. */
+.card.note-color-peach,
+.card.note-color-sage,
+.card.note-color-sky {
+  border-color: transparent;
+}
+
+/* Small dot indicator for compact single-line rows (Sidebar's Favorites list). */
+.note-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
 }
 
 .note-help-wrap {

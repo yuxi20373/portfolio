@@ -152,20 +152,22 @@ export default {
     </div>
 
     <div v-if="showSearchBox" class="search-panel">
+      <div class="search-panel-fields">
+        <label class="search-panel-label">Keyword (like what you'd type into a search engine)</label>
+        <input type="text" v-model="searchKeyword" class="search-panel-input"
+               placeholder="e.g. 軟體開發 RD"
+               @compositionstart="onCompositionStart" @compositionend="onCompositionEnd"
+               @keydown="onSearchFieldKeydown" />
+        <label class="search-panel-label">Your question (what you want to know & save to the wiki)</label>
+        <input type="text" v-model="searchQuestion" class="search-panel-input"
+               placeholder="e.g. RD 的主要工作內容有什麼？怎麼定義 RD？"
+               @compositionstart="onCompositionStart" @compositionend="onCompositionEnd"
+               @keydown="onSearchFieldKeydown" />
+        <button class="btn" :disabled="searching || !searchKeyword.trim() || !searchQuestion.trim()" @click="runSearch">
+          <span v-if="searching" class="spinner"></span>{{ searching ? ' Searching…' : 'Search & add to wiki' }}
+        </button>
+      </div>
       <img class="wiki-search-icon" src="assets/images/icon-search.png" alt="" @error="onIconError" />
-      <label class="search-panel-label">Keyword (like what you'd type into a search engine)</label>
-      <input type="text" v-model="searchKeyword" class="search-panel-input"
-             placeholder="e.g. 軟體開發 RD"
-             @compositionstart="onCompositionStart" @compositionend="onCompositionEnd"
-             @keydown="onSearchFieldKeydown" />
-      <label class="search-panel-label">Your question (what you want to know & save to the wiki)</label>
-      <input type="text" v-model="searchQuestion" class="search-panel-input"
-             placeholder="e.g. RD 的主要工作內容有什麼？怎麼定義 RD？"
-             @compositionstart="onCompositionStart" @compositionend="onCompositionEnd"
-             @keydown="onSearchFieldKeydown" />
-      <button class="btn" :disabled="searching || !searchKeyword.trim() || !searchQuestion.trim()" @click="runSearch">
-        <span v-if="searching" class="spinner"></span>{{ searching ? ' Searching…' : 'Search & add to wiki' }}
-      </button>
     </div>
 
     <div v-if="editing" class="wiki-edit-form">

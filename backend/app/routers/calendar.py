@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session as DBSession
 from .. import models
 from ..auth import get_current_user
 from ..database import get_db
-from ..services.weather_service import get_rain_days_for_range
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
@@ -48,20 +47,7 @@ def calendar_month(
         d = dt.strftime("%Y-%m-%d")
         notes_by_day.setdefault(d, []).append(title)
 
-    # Capped to 7 days out - querying Open-Meteo for a date range spanning
-    # a whole month (up to ~30 days of future forecast) was slow/unreliable
-    # enough to make the calendar page hang. Past days are unaffected (the
-    # archive endpoint covers those); a month entirely beyond the cutoff
-    # (browsing further into the future) just gets no rain highlighting.
-    last_day_of_month = end - timedelta(days=1)
-    weather_cutoff = datetime.utcnow() + timedelta(days=7)
-    weather_end = min(last_day_of_month, weather_cutoff)
-
-    rain_days = set()
-    if start <= weather_end:
-        rain_days = get_rain_days_for_range(start.strftime("%Y-%m-%d"), weather_end.strftime("%Y-%m-%d"))
-
-    return {"counts": counts, "notes": notes_by_day, "rain_days": sorted(rain_days)}
+    return {"counts": counts, "notes": notes_by_day}
 
 
 @router.get("/day")
@@ -117,5 +103,5 @@ def calendar_day(
             for s in sessions
         ],
         "wiki_entries": [{"id": e.id, "title": e.title, "entry_type": e.entry_type} for e in wiki_entries],
-        "notes": [{"id": n.id, "title": n.title, "created_at": n.created_at} for n in notes],
+        "notes": [{"id": n.id, "title": n.title, "created_at": n.created_at, "color": n.color} for n in notes],
     }

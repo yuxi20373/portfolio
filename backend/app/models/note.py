@@ -13,6 +13,9 @@ class Note(Base):
     tags: plain string labels (like WikiEntry.tags), optionally picked from
       the user's saved NoteTag registry below, but not enforced against it -
       free text is fine.
+    color: one of "peach" / "sage" / "sky" (see the NOTE_COLORS swatches in
+      CalendarView.js/NotesView.js), or None - purely a display tint, no
+      other meaning.
     is_favorited: surfaced via the calendar page's sidebar "Favorites" list
       (grouped by date) - see routers/notes.py's /favorite endpoint.
 
@@ -24,6 +27,7 @@ class Note(Base):
     title = Column(String(255))
     content = Column(Text)  # raw Markdown
     tags = Column(JSON, default=list)
+    color = Column(String(20), nullable=True)
     is_favorited = Column(Boolean, default=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)

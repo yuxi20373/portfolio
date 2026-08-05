@@ -16,6 +16,7 @@ class NoteCreate(BaseModel):
     title: str
     content: str
     tags: Optional[list[str]] = None
+    color: Optional[str] = None
     date: Optional[str] = None  # "YYYY-MM-DD"; defaults to today if omitted
 
 
@@ -23,6 +24,7 @@ class NoteUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     tags: Optional[list[str]] = None
+    color: Optional[str] = None
 
 
 class FavoriteUpdate(BaseModel):
@@ -51,6 +53,7 @@ def _note_dict(n: models.Note):
         "title": n.title,
         "content": n.content,
         "tags": n.tags or [],
+        "color": n.color,
         "is_favorited": n.is_favorited,
         "created_at": n.created_at,
     }
@@ -101,6 +104,7 @@ def create_note(
         title=title,
         content=payload.content or "",
         tags=payload.tags or [],
+        color=payload.color,
         created_at=created_at,
         user_id=user.id,
     )
@@ -136,6 +140,8 @@ def update_note(
         n.content = payload.content
     if payload.tags is not None:
         n.tags = payload.tags
+    if payload.color is not None:
+        n.color = payload.color
     db.commit()
     db.refresh(n)
     return _note_dict(n)

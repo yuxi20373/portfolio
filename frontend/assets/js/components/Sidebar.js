@@ -412,6 +412,7 @@ export default {
           <template v-for="group in store.favoritedNotesByDate" :key="group.date">
             <div class="notes-favorites-date">{{ fmtDateLabel(group.date) }}</div>
             <div v-for="n in group.notes" :key="n.id" class="session-item" @click="store.openNoteView(n.id)">
+              <span v-if="n.color" class="note-color-dot" :class="'note-color-' + n.color"></span>
               <span class="session-title">{{ n.title }}</span>
             </div>
           </template>
