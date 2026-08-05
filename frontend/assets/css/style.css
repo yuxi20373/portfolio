@@ -1137,16 +1137,6 @@ textarea {
   border-color: var(--accent);
 }
 
-.btn.danger {
-  background: var(--white);
-  color: #B3261E;
-  border: 1px solid #E4B9B3;
-}
-
-.btn.danger:hover {
-  background: #FBEAE8;
-}
-
 /* Wiki */
 
 .wiki-panel {
@@ -1428,9 +1418,43 @@ textarea {
   cursor: pointer;
 }
 
-.notes-sort-toggle {
-  display: inline-flex;
+/* Notes 頁 By Date/By Tag 頁籤(見 NotesView.js),取代原本兩個獨立的
+   icon-only 按鈕 - 用同一個底色容器包起來,看起來是一組頁籤而不是散落的按鈕。 */
+.notes-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--sidebar-bg);
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.notes-tab {
+  display: flex;
+  align-items: center;
   gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.notes-tab svg {
+  width: 15px;
+  height: 15px;
+}
+
+.notes-tab.active {
+  background: var(--white);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.notes-tab:hover:not(.active) {
+  color: var(--text);
 }
 
 .markdown-body {
@@ -2324,8 +2348,7 @@ select {
   border-top-color: #fff;
 }
 
-.btn.secondary .spinner,
-.btn.danger .spinner {
+.btn.secondary .spinner {
   border-color: rgba(0, 0, 0, 0.15);
   border-top-color: var(--accent);
 }

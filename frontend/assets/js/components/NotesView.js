@@ -294,15 +294,16 @@ export default {
     </template>
 
     <template v-else>
-      <div class="wiki-toolbar" style="justify-content:flex-end;">
+      <div class="wiki-toolbar" style="justify-content:space-between;">
+        <div class="notes-tabs">
+          <button class="notes-tab" :class="{active: sortMode === 'date'}" @click="sortMode = 'date'">
+            <span v-html="icons.calendar"></span> By Date
+          </button>
+          <button class="notes-tab" :class="{active: sortMode === 'tag'}" @click="sortMode = 'tag'">
+            <span v-html="icons.tag"></span> By Tag
+          </button>
+        </div>
         <button class="icon-btn" title="New note" @click="toggleNewNote" v-html="icons.plus"></button>
-      </div>
-
-      <div class="row" style="gap:10px; margin-bottom:10px; flex-wrap:wrap;">
-        <span class="notes-sort-toggle">
-          <button class="icon-btn" title="Sort by date" :class="{active: sortMode === 'date'}" @click="sortMode = 'date'" v-html="icons.calendar"></button>
-          <button class="icon-btn" title="Sort by tag" :class="{active: sortMode === 'tag'}" @click="sortMode = 'tag'" v-html="icons.tag"></button>
-        </span>
       </div>
 
       <div v-if="showNewNote" class="note-editor">

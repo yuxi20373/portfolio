@@ -140,14 +140,12 @@ export default {
     <div class="wiki-toolbar">
       <button class="btn secondary" @click="showSearchBox = !showSearchBox">Search</button>
       <template v-if="store.currentWikiEntry && !editing">
-        <button class="btn secondary" @click="startEdit">Edit</button>
-        <button class="btn secondary" @click="showAdjustDrawer = true">Adjust</button>
+        <button class="icon-btn" title="Edit" @click="startEdit" v-html="icons.edit"></button>
+        <button class="icon-btn" title="Adjust" @click="showAdjustDrawer = true" v-html="icons.sliders"></button>
         <button class="icon-btn favorite-btn" :class="{active: store.currentWikiEntry.is_favorited}" title="Favorite this entry"
                 @click="store.toggleWikiEntryFavorite(store.currentWikiEntry.id)"
                 v-html="store.currentWikiEntry.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
-        <button class="btn danger" @click="removeEntry">
-          <span v-html="icons.trash"></span> Delete entry
-        </button>
+        <button class="icon-btn" title="Delete entry" @click="removeEntry" v-html="icons.trash"></button>
       </template>
     </div>
 

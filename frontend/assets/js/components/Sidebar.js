@@ -147,9 +147,8 @@ export default {
       }
     }
 
-    // Templates: listing/creating/editing/deleting all happen in the main
-    // panel's Template Manage screen now (see NotesView.js) - this button
-    // just opens it.
+    // Template 的列表/新增/編輯/刪除現在都在主畫面的 Template Manage 畫面裡
+    // (見 NotesView.js),這個按鈕只是負責打開它。
     function openTemplateManage() {
       store.templateManageOpen = true;
       store.viewingTemplate = null;
@@ -355,6 +354,14 @@ export default {
 
     <template v-else-if="store.view === 'notes'">
       <div class="session-list">
+        <div class="session-item favorites-row" :class="{active: store.templateManageOpen}" @click="openTemplateManage">
+          <span class="favorites-row-icon">
+            <span v-html="icons.doc"></span>
+            <img src="assets/images/manager.png" alt="" @error="onIconError" />
+          </span>
+          <span class="session-title favorites-row-label">Template Manage</span>
+        </div>
+
         <div class="session-item favorites-row" :class="{active: notesFavoritesOpen}" @click="toggleNotesFavorites">
           <span class="favorites-row-icon">
             <span v-html="icons.bookmarkFilled"></span>
@@ -393,11 +400,6 @@ export default {
         <input v-if="addingMemo" type="text" v-model="newMemoText" class="session-rename-input memo-input"
                placeholder="New memo…" autofocus
                @keydown.enter.prevent="confirmAddMemo" @keydown.esc.prevent="cancelAddMemo" @blur="confirmAddMemo" />
-      </div>
-
-      <div class="session-item" :class="{active: store.templateManageOpen}" @click="openTemplateManage">
-        <span class="mini-icon-btn" v-html="icons.doc"></span>
-        <span class="session-title">Template Manage</span>
       </div>
     </template>
 
