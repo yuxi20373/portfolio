@@ -364,10 +364,7 @@ export default {
           <button class="mini-icon-btn" title="Delete" @click="store.deleteMemoItem(m.id)">×</button>
         </div>
 
-        <div v-if="!addingMemo" class="new-chat-row memo-add-row" @click="startAddMemo">
-          <span class="icon-btn" v-html="icons.plus"></span>
-          <span class="new-chat-label">Add item</span>
-        </div>
+        <button v-if="!addingMemo" class="icon-btn memo-add-row" title="Add item" @click="startAddMemo" v-html="icons.plus"></button>
         <input v-else type="text" v-model="newMemoText" class="session-rename-input memo-input"
                placeholder="New memo…" autofocus
                @keydown.enter.prevent="confirmAddMemo" @keydown.esc.prevent="cancelAddMemo" @blur="confirmAddMemo" />
