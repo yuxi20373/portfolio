@@ -209,14 +209,14 @@ export default {
         </span>
       </button>
 
-      <button class="home-float home-float-weather" :class="{ 'home-float-weather-rain': isRaining }" title="Check today's weather" @click="onWeatherClick">
+      <button class="home-float corner-weather" title="Check today's weather" @click="onWeatherClick">
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="icons.cloud"></span>
           <img src="assets/images/icon-weather.png" alt="" @error="onImgError" />
         </span>
       </button>
 
-      <button class="home-float home-float-theme" title="Toggle light / dark mode" @click="store.toggleTheme()">
+      <button class="home-float corner-theme" title="Toggle light / dark mode" @click="store.toggleTheme()">
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="store.theme === 'dark' ? icons.sun : icons.moon"></span>
           <img :src="store.theme === 'dark' ? 'assets/images/dark.png' : 'assets/images/light.png'" alt="" @error="onImgError" @load="onImgLoad" />

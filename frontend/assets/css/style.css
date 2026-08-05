@@ -2417,27 +2417,37 @@ select {
   animation-delay: 1.35s;
 }
 
-.home-float-weather {
-  top: -30px;
-  left: 10%;
-  margin-left: -34px;
-  animation-delay: .45s;
-}
-
-/* Home-page-only light/dark toggle - mirrors .home-float-notes' top-center
-   slot but at the bottom, since notes already claimed top-center. */
-.home-float-theme {
+/* Weather + theme toggle - unlike the other hero floats, these are pinned
+   to the screen's right edge (position:fixed, not relative to
+   .home-hero-wrap) with no circle chrome and no bob animation, same "pure
+   icon" treatment as .corner-logout below. Still home-page-only since
+   they're only ever in the DOM while HomeView.js is mounted.
+   Compound selector (.home-float.corner-x) for the same specificity reason
+   as .corner-logout - .home-float's own width/height/animation/position
+   would otherwise win on equal-specificity source order. */
+.home-float.corner-theme,
+.home-float.corner-weather {
+  position: fixed;
   right: 14px;
-  top: 96px;
-  margin-left: -34px;
-  animation-delay: 2.25s;
+  z-index: 6;
+  width: 44px;
+  height: 44px;
+  animation: none;
 }
 
-/* Rainy today - swap just the weather float's circle to a light grey,
-   everything else (icon color, other floats) stays as-is. See
-   HomeView.js's isRaining. */
-.home-float-weather-rain .home-float-fallback {
-  background: var(--weather-rain-bg);
+.home-float.corner-theme {
+  top: 14px;
+}
+
+.home-float.corner-weather {
+  top: 66px; /* clears .corner-theme above it (44px icon + 8px gap) */
+}
+
+.corner-theme .home-float-fallback,
+.corner-weather .home-float-fallback {
+  background: none;
+  border: none;
+  box-shadow: none;
 }
 
 @keyframes home-float-bob {
@@ -2616,6 +2626,21 @@ select {
     right: 8px;
     bottom: 78px;
     /* clears .chat-input's send button, pinned to the same corner */
+  }
+
+  .home-float.corner-theme,
+  .home-float.corner-weather {
+    right: 8px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .home-float.corner-theme {
+    top: 8px;
+  }
+
+  .home-float.corner-weather {
+    top: 52px; /* clears .corner-theme above it (36px icon + 8px gap) */
   }
 
   .mobile-menu-btn {
