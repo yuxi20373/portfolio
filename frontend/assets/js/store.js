@@ -446,7 +446,17 @@ export const store = reactive({
     this.viewingNote = null;
   },
 
-  // patch: any subset of {title, content, tags}
+  // payload: {title, content, tags?, color?, date?} - date omitted defaults
+  // to today server-side (see routers/notes.py). Used by the standalone
+  // Notes page's own "+ New note" entry (the calendar page still posts
+  // directly since it always has a selected date to attach to).
+  async createNote(payload) {
+    const note = await api.post("/api/notes", payload);
+    this.allNotes.unshift(note);
+    return note;
+  },
+
+  // patch: any subset of {title, content, tags, color}
   async updateNote(id, patch) {
     const updated = await api.patch(`/api/notes/${id}`, patch);
     if (this.viewingNote && this.viewingNote.id === id) this.viewingNote = updated;
