@@ -263,6 +263,7 @@ export default {
   },
   template: `
   <div class="main-panel calendar-panel">
+    <h1 class="page-title">CALENDAR</h1>
     <div class="row between">
       <div class="row">
         <button class="btn secondary" @click="prevMonth">‹</button>

@@ -284,7 +284,7 @@ export default {
     <template v-if="store.templateManageOpen">
       <div class="template-manage">
         <div class="template-manage-header row between">
-          <h2>Manage</h2>
+          <h1 class="page-title">MANAGE</h1>
           <button class="icon-btn" title="Back to notes" @click="closeTemplateManage" v-html="icons.close"></button>
         </div>
 
@@ -389,6 +389,7 @@ export default {
     </template>
 
     <template v-else>
+      <h1 class="page-title">NOTES</h1>
       <div class="wiki-toolbar">
         <button class="icon-btn" title="New note" @click="toggleNewNote" v-html="icons.plus"></button>
         <div class="notes-tabs">

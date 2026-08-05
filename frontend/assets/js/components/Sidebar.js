@@ -16,6 +16,7 @@ export default {
     const movingEntryId = ref(null);
 
     const notesFavoritesOpen = ref(false);
+    const homeIconOk = ref(true); // icon-nav 的 Home 圖示:home.png 讀取失敗才換成 SVG,不會兩個疊在一起顯示
 
     onMounted(() => {
       store.loadWikiFolders();
@@ -223,6 +224,7 @@ export default {
       sortedNewsSources,
       onIconError,
       notesFavoritesOpen,
+      homeIconOk,
       toggleNotesFavorites,
       fmtDateLabel,
       addingMemo,
@@ -236,8 +238,8 @@ export default {
   <aside class="sidebar" :class="{open: store.sidebarOpen}">
     <div class="icon-nav">
       <button class="icon-btn icon-btn-home" :class="{active: store.view==='home'}" @click="setView('home')" title="Home">
-        <span v-html="icons.home"></span>
-        <img src="assets/images/home.png" alt="" @error="onIconError" />
+        <img v-if="homeIconOk" src="assets/images/home.png" alt="" @error="homeIconOk = false" />
+        <span v-else v-html="icons.home"></span>
       </button>
       <button class="icon-btn" :class="{active: store.view==='chat'}" @click="setView('chat')" title="Chat" v-html="icons.chat"></button>
       <button class="icon-btn" :class="{active: store.view==='wiki'}" @click="setView('wiki')" title="Knowledge base" v-html="icons.wiki"></button>

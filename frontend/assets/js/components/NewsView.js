@@ -138,6 +138,7 @@ export default {
 
     <!-- Overview: featured carousel (today / latest day) + timeline below -->
     <template v-else>
+      <h1 class="page-title">NEWS</h1>
       <div v-if="store.newsLoading && !store.newsOverview" class="loading-row"><span class="spinner"></span> Loading…</div>
 
       <template v-else-if="store.newsOverview && featuredArticle">

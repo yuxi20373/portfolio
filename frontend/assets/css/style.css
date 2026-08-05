@@ -334,20 +334,12 @@ textarea {
   height: 18px;
 }
 
-/* icon-nav 的 Home 按鈕改用 home.png,絕對定位疊在按鈕正中央(跟 SVG 備援
-   同樣 18x18 的範圍),不會動到 .icon-btn 本身固定的 38x38 大小 - 所以
-   icon-nav 那排跟側欄排版完全不受影響。 */
-.icon-btn-home {
-  position: relative;
-}
-
+/* icon-nav 的 Home 按鈕改用 home.png(讀取失敗才換回 SVG,見 Sidebar.js 的
+   homeIconOk,兩者不會同時出現)- 跟 SVG 備援一樣是 18x18,不會動到
+   .icon-btn 本身固定的 38x38 大小,icon-nav 那排排版完全不受影響。 */
 .icon-btn-home img {
-  position: absolute;
-  top: 50%;
-  left: 50%;
   width: 18px;
   height: 18px;
-  transform: translate(-50%, -50%);
   object-fit: contain;
 }
 
@@ -966,6 +958,17 @@ textarea {
   overflow: hidden;
 }
 
+/* 各頁最上方的大標題(WIKI/CALENDAR/MANAGE/NOTES/NEWS,Chat 頁不需要)- 見
+   WikiView.js/CalendarView.js/NotesView.js/NewsView.js 各自的 template。 */
+.page-title {
+  font-family: "Overlock SC", sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  margin: 0 0 16px;
+  color: var(--accent-hover);
+}
+
 .empty-state {
   font-family: "Quando", serif;
   color: var(--text-muted);
@@ -1207,8 +1210,9 @@ textarea {
   margin-bottom: 20px;
 }
 
-.template-manage-header h2 {
-  font-size: 28px;
+/* .page-title 自己的 margin-bottom 在這裡不需要 - 這個 row 本身已經靠
+   margin-bottom:20px 跟下面的區塊隔開了,兩個疊加會有多餘空白。 */
+.template-manage-header .page-title {
   margin: 0;
 }
 
@@ -1369,18 +1373,19 @@ textarea {
   margin-top: 12px;
 }
 
-/* 純圖片按鈕(同 .corner-logout 那套「純PNG無底」處理),比原本文字按鈕的
-   總高度(約 37px)稍微高一點。搜圖失敗時整個換成 SVG icon+文字備援
-   (見 WikiView.js 的 searchBtnImgOk),不是疊圖遮蓋那套做法,因為這顆按鈕
+/* Wiki 工具列的外層「Search」按鈕(打開/收起搜尋面板那顆)- 純圖片按鈕
+   (同 .corner-logout 那套「純PNG無底」處理),比原本文字按鈕的總高度
+   (約 37px)稍微高一點。搜圖失敗就整個換成 SVG icon+文字備援(見
+   WikiView.js 的 searchToggleImgOk),不是疊圖遮蓋那套做法,因為這顆按鈕
    寬度要跟著圖片原始比例走,疊圖會讓可點擊範圍跟圖片顯示範圍對不齊。 */
-.search-panel .btn.search-submit-btn {
+.btn.search-toggle-btn {
   background: none;
   border: none;
   padding: 0;
   height: 44px;
 }
 
-.search-submit-btn img {
+.search-toggle-btn img {
   height: 100%;
   width: auto;
   object-fit: contain;
@@ -1393,11 +1398,6 @@ textarea {
   color: var(--accent);
   font-size: 13.5px;
   white-space: nowrap;
-}
-
-.search-submit-btn.search-submit-btn .spinner {
-  border-color: rgba(0, 0, 0, 0.15);
-  border-top-color: var(--accent);
 }
 
 .adjust-panel {
