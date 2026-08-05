@@ -70,6 +70,7 @@ export default {
         store.loadAllNotes();
         if (!store.noteTemplates.length) store.loadNoteTemplates();
         if (!store.noteTags.length) store.loadNoteTags();
+        store.templateManageOpen = false;
       }
     }
 
@@ -146,24 +147,12 @@ export default {
       }
     }
 
-    // Templates: created here (list + creation both live in the drawer per
-    // the standalone Notes page's design), but content/tags are edited in
-    // the main panel once selected - see store.viewingTemplate.
-    async function promptNewTemplate() {
-      const name = prompt("Template name");
-      if (name && name.trim()) {
-        try {
-          store.viewingTemplate = await store.createNoteTemplate(name.trim(), "", []);
-        } catch (err) {
-          alert("Couldn't create template: " + err.message);
-        }
-      }
-    }
-
-    async function removeTemplate(t) {
-      if (confirm(`Delete template "${t.name}"?`)) {
-        await store.deleteNoteTemplate(t.id);
-      }
+    // Templates: listing/creating/editing/deleting all happen in the main
+    // panel's Template Manage screen now (see NotesView.js) - this button
+    // just opens it.
+    function openTemplateManage() {
+      store.templateManageOpen = true;
+      store.viewingTemplate = null;
     }
 
     async function startFolderRename(group) {
@@ -222,8 +211,7 @@ export default {
       toggleGroup,
       groupCollapsed,
       promptNewFolder,
-      promptNewTemplate,
-      removeTemplate,
+      openTemplateManage,
       editingFolderId,
       editingFolderName,
       startFolderRename,
@@ -367,18 +355,24 @@ export default {
 
     <template v-else-if="store.view === 'notes'">
       <div class="session-list">
-        <div v-for="t in store.noteTemplates" :key="t.id"
-             class="session-item" :class="{active: store.viewingTemplate && store.viewingTemplate.id === t.id}"
-             @click="store.viewingTemplate = t">
-          <span class="session-title">{{ t.name }}</span>
-          <span class="session-actions">
-            <button class="mini-icon-btn" title="Delete" @click.stop="removeTemplate(t)" v-html="icons.trash"></button>
+        <div class="session-item favorites-row" :class="{active: notesFavoritesOpen}" @click="toggleNotesFavorites">
+          <span class="favorites-row-icon">
+            <span v-html="icons.bookmarkFilled"></span>
+            <img src="assets/images/star.png" alt="" @error="onIconError" />
           </span>
+          <span class="session-title favorites-row-label">Favorites</span>
         </div>
-        <div class="new-chat-row" @click="promptNewTemplate">
-          <span class="icon-btn" v-html="icons.plus"></span>
-          <span class="new-chat-label">New template</span>
-        </div>
+
+        <template v-if="notesFavoritesOpen">
+          <template v-for="group in store.favoritedNotesByDate" :key="group.date">
+            <div class="notes-favorites-date">{{ fmtDateLabel(group.date) }}</div>
+            <div v-for="n in group.notes" :key="n.id" class="session-item" @click="store.openNoteView(n.id)">
+              <span v-if="n.color" class="note-color-dot" :class="'note-color-' + n.color"></span>
+              <span class="session-title">{{ n.title }}</span>
+            </div>
+          </template>
+          <div v-if="!store.favoritedNotesByDate.length" class="hint">No favorited notes yet</div>
+        </template>
       </div>
 
       <div class="memo-box">
@@ -399,6 +393,11 @@ export default {
         <input v-if="addingMemo" type="text" v-model="newMemoText" class="session-rename-input memo-input"
                placeholder="New memo…" autofocus
                @keydown.enter.prevent="confirmAddMemo" @keydown.esc.prevent="cancelAddMemo" @blur="confirmAddMemo" />
+      </div>
+
+      <div class="session-item" :class="{active: store.templateManageOpen}" @click="openTemplateManage">
+        <span class="mini-icon-btn" v-html="icons.doc"></span>
+        <span class="session-title">Template Manage</span>
       </div>
     </template>
 

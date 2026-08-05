@@ -74,11 +74,15 @@ export const store = reactive({
   viewingNote: null,
   loadingNoteView: false,
   noteTemplates: [],
-  // Which template the standalone Notes page's main panel is showing (or
-  // null for the default all-notes list) - set directly by Sidebar.js's
-  // template list since the full object (incl. content/tags) is already
-  // loaded in noteTemplates, no fetch needed.
+  // Which template the standalone Notes page's Template Manage screen has
+  // selected for editing (or null when the form is blank / creating a new
+  // one) - set directly from noteTemplates, no fetch needed since the full
+  // object (incl. content/tags) is already loaded there.
   viewingTemplate: null,
+  // Whether the Notes page's main panel is showing the Template Manage
+  // screen (see Sidebar.js's "Template Manage" button) instead of the
+  // regular notes list.
+  templateManageOpen: false,
   noteTags: [],
   allNotes: [], // standalone Notes page's full list (see loadAllNotes)
   notesTagFilter: null, // tag name | null - standalone Notes page's filter
@@ -636,6 +640,7 @@ export const store = reactive({
     this.viewingNote = null;
     this.noteTemplates = [];
     this.viewingTemplate = null;
+    this.templateManageOpen = false;
     this.noteTags = [];
     this.allNotes = [];
     this.notesTagFilter = null;

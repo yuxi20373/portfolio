@@ -43,6 +43,7 @@ export default {
       store.loadAllNotes();
       if (!store.noteTemplates.length) store.loadNoteTemplates();
       if (!store.noteTags.length) store.loadNoteTags();
+      store.templateManageOpen = false;
     }
 
     // Graceful fallback: if a PNG hasn't been dropped into assets/images/

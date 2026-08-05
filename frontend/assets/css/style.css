@@ -1137,6 +1137,37 @@ textarea {
   color: #fff;
 }
 
+/* Template Manage screen (see Sidebar.js's "Template Manage" button) -
+   takes over the whole Notes main panel: a big heading up top, then a
+   two-column body with the edit/create form on the left and the pick list
+   on the right. */
+.template-manage-header {
+  margin-bottom: 18px;
+}
+
+.template-manage-header h2 {
+  font-size: 22px;
+  margin: 0;
+}
+
+.template-manage-body {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.template-manage-form {
+  flex: 1;
+  min-width: 0;
+}
+
+.template-manage-list {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .wiki-toolbar {
   display: flex;
   align-items: center;
@@ -2291,6 +2322,7 @@ select {
   font-family: "Akaya Kanadaka", cursive;
   font-size: 44px;
   color: var(--accent-hover);
+  margin-top: 16px;
   margin-bottom: -20px;
   /* home-panel's own 36px gap is plenty before the hero below */
 }
