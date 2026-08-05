@@ -4,6 +4,7 @@ import { icons } from "../icons.js";
 import { renderMarkdown } from "../markdown.js";
 import DrawerShell from "./DrawerShell.js";
 import ColorPicker from "./ColorPicker.js";
+import TagPicker from "./TagPicker.js";
 
 const MARKDOWN_HELP = `
   <div><code># Heading</code></div>
@@ -16,7 +17,7 @@ const MARKDOWN_HELP = `
 `;
 
 export default {
-  components: { DrawerShell, ColorPicker },
+  components: { DrawerShell, ColorPicker, TagPicker },
   setup() {
     // No more Notes/Templates tab switcher - this page always defaults to
     // the all-notes list; templates are listed/created in the sidebar (see
@@ -50,21 +51,10 @@ export default {
       return order.map((tag) => ({ tag, notes: groups[tag] }));
     });
 
-    const newTagName = ref("");
-    const savingTag = ref(false);
-
-    async function addTag() {
-      const name = newTagName.value.trim();
-      if (!name) return;
-      savingTag.value = true;
-      try {
-        await store.createNoteTag(name);
-        newTagName.value = "";
-      } finally {
-        savingTag.value = false;
-      }
-    }
-
+    // Tags are no longer registered through a dedicated "add tag" box - new
+    // tag names typed straight into a note's Tags field get auto-registered
+    // on save (see store.createNote/updateNote's ensureNoteTags call), so
+    // they show up here and in TagPicker's checklist without an extra step.
     async function removeTag(t) {
       if (confirm(`Delete tag "${t.name}"? Notes already tagged with it keep the tag text - this only removes it from the saved list.`)) {
         await store.deleteNoteTag(t.id);
@@ -236,7 +226,7 @@ export default {
 
     return {
       store, icons, renderMarkdown, MARKDOWN_HELP,
-      sortMode, pickTagFilter, allNotesByTag, newTagName, savingTag, addTag, removeTag,
+      sortMode, pickTagFilter, allNotesByTag, removeTag,
       fmtDateShort, fmtDateLabel,
       showNewNote, newNoteTitle, newNoteContent, newNoteTags, newNoteColor, savingNewNote,
       toggleNewNote, saveNewNote,
@@ -294,6 +284,7 @@ export default {
         <input type="text" v-model="newNoteTitle" class="note-editor-title-input" placeholder="Note title" />
         <div class="row" style="gap:8px; align-items:center; margin-bottom:8px;">
           <input type="text" v-model="newNoteTags" class="note-editor-title-input" style="flex:1; margin-bottom:0;" placeholder="Tags (comma separated)" />
+          <TagPicker v-model="newNoteTags" :options="store.noteTags" />
           <ColorPicker v-model="newNoteColor" />
         </div>
         <textarea v-model="newNoteContent" class="note-editor-textarea" rows="8" placeholder="Write your note in Markdown…"></textarea>
@@ -302,10 +293,6 @@ export default {
         </button>
       </div>
 
-      <div class="row" style="gap:8px; align-items:center; margin-bottom:10px;">
-        <input type="text" v-model="newTagName" class="note-editor-title-input" style="margin-bottom:0; max-width:200px;" placeholder="New tag name" @keydown.enter.prevent="addTag" />
-        <button class="btn secondary" :disabled="savingTag || !newTagName.trim()" @click="addTag">Add tag</button>
-      </div>
       <div v-if="store.noteTags.length" class="tag-row notes-tag-filter">
         <span v-for="t in store.noteTags" :key="t.id" class="tag notes-tag-manage" :class="{active: store.notesTagFilter === t.name}">
           <span class="clickable" @click="pickTagFilter(t.name)">{{ t.name }}</span>
@@ -348,6 +335,7 @@ export default {
           <input type="text" v-model="editNoteTitle" class="note-editor-title-input" placeholder="Note title" />
           <div class="row" style="gap:8px; align-items:center; margin-bottom:8px;">
             <input type="text" v-model="editNoteTags" class="note-editor-title-input" style="flex:1; margin-bottom:0;" placeholder="Tags (comma separated)" />
+            <TagPicker v-model="editNoteTags" :options="store.noteTags" />
             <ColorPicker v-model="editNoteColor" />
           </div>
           <div class="note-editor-toolbar">

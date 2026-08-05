@@ -38,6 +38,11 @@ export default {
     }
     function goNotes() {
       store.view = "notes";
+      // Same loads Sidebar.js's setView('notes') does - needed here too
+      // since this button skips that function entirely.
+      store.loadAllNotes();
+      if (!store.noteTemplates.length) store.loadNoteTemplates();
+      if (!store.noteTags.length) store.loadNoteTags();
     }
 
     // Graceful fallback: if a PNG hasn't been dropped into assets/images/
@@ -47,8 +52,9 @@ export default {
       e.target.style.display = "none";
     }
     // The sticker images' :src swaps reactively with theme (see stickerSrc
-    // below) - if one variant was hidden by onImgError, undo that once a
-    // different variant loads fine, or it'd stay hidden forever.
+    // below), same for the light/dark toggle's own icon below - if one
+    // variant was hidden by onImgError, undo that once a different variant
+    // loads fine, or it'd stay hidden forever.
     function onImgLoad(e) {
       e.target.style.display = "";
     }
@@ -207,6 +213,13 @@ export default {
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="icons.cloud"></span>
           <img src="assets/images/icon-weather.png" alt="" @error="onImgError" />
+        </span>
+      </button>
+
+      <button class="home-float home-float-theme" title="Toggle light / dark mode" @click="store.toggleTheme()">
+        <span class="home-float-inner">
+          <span class="home-float-fallback" v-html="store.theme === 'dark' ? icons.sun : icons.moon"></span>
+          <img :src="store.theme === 'dark' ? 'assets/images/dark.png' : 'assets/images/light.png'" alt="" @error="onImgError" @load="onImgLoad" />
         </span>
       </button>
     </div>

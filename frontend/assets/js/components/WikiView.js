@@ -153,14 +153,22 @@ export default {
 
     <div v-if="showSearchBox" class="search-panel">
       <div class="search-panel-fields">
-        <label class="search-panel-label">Keyword (like what you'd type into a search engine)</label>
+        <label class="search-panel-label">Keyword
+          <span class="search-panel-help">
+            <span class="search-panel-help-icon" v-html="icons.help"></span>
+            <span class="search-panel-help-tip">like what you'd type into a search engine — e.g. 軟體開發 RD</span>
+          </span>
+        </label>
         <input type="text" v-model="searchKeyword" class="search-panel-input"
-               placeholder="e.g. 軟體開發 RD"
                @compositionstart="onCompositionStart" @compositionend="onCompositionEnd"
                @keydown="onSearchFieldKeydown" />
-        <label class="search-panel-label">Your question (what you want to know & save to the wiki)</label>
+        <label class="search-panel-label">Your question
+          <span class="search-panel-help">
+            <span class="search-panel-help-icon" v-html="icons.help"></span>
+            <span class="search-panel-help-tip">what you want to know & save to the wiki — e.g. RD 的主要工作內容有什麼？怎麼定義 RD？</span>
+          </span>
+        </label>
         <input type="text" v-model="searchQuestion" class="search-panel-input"
-               placeholder="e.g. RD 的主要工作內容有什麼？怎麼定義 RD？"
                @compositionstart="onCompositionStart" @compositionend="onCompositionEnd"
                @keydown="onSearchFieldKeydown" />
         <button class="btn" :disabled="searching || !searchKeyword.trim() || !searchQuestion.trim()" @click="runSearch">

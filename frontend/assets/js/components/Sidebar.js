@@ -152,7 +152,11 @@ export default {
     async function promptNewTemplate() {
       const name = prompt("Template name");
       if (name && name.trim()) {
-        store.viewingTemplate = await store.createNoteTemplate(name.trim(), "", []);
+        try {
+          store.viewingTemplate = await store.createNoteTemplate(name.trim(), "", []);
+        } catch (err) {
+          alert("Couldn't create template: " + err.message);
+        }
       }
     }
 

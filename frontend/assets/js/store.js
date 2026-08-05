@@ -458,6 +458,7 @@ export const store = reactive({
   async createNote(payload) {
     const note = await api.post("/api/notes", payload);
     this.allNotes.unshift(note);
+    if (payload.tags && payload.tags.length) await this.ensureNoteTags(payload.tags);
     return note;
   },
 
@@ -470,6 +471,7 @@ export const store = reactive({
       if (updated.is_favorited) this.favoritedNotes[idx] = updated;
       else this.favoritedNotes.splice(idx, 1);
     }
+    if (patch.tags && patch.tags.length) await this.ensureNoteTags(patch.tags);
     return updated;
   },
 
@@ -530,8 +532,15 @@ export const store = reactive({
     this.noteTags = await api.get("/api/notes/tags");
   },
 
-  async createNoteTag(name) {
-    await api.post("/api/notes/tags", { name });
+  // Auto-registers any brand-new tag names typed directly into a note's Tags
+  // field (comma separated) into the tag registry, so they immediately show
+  // up in the filter chips row and TagPicker's checklist - there's no
+  // separate "add tag" step anymore (see createNote/updateNote above).
+  async ensureNoteTags(names) {
+    const existing = new Set(this.noteTags.map((t) => t.name));
+    const missing = [...new Set(names)].filter((n) => n && !existing.has(n));
+    if (!missing.length) return;
+    await Promise.all(missing.map((n) => api.post("/api/notes/tags", { name: n })));
     await this.loadNoteTags();
   },
 

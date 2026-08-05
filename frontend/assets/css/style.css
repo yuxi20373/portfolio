@@ -60,6 +60,16 @@ body {
   color: var(--text);
 }
 
+/* Standing convention: every input/textarea's English text (typed content
+   and placeholders) uses Genos - Genos has no CJK glyphs, so mixed Chinese
+   text automatically falls through to the system stack per-character,
+   nothing extra needed to keep Chinese input readable. Button labels use
+   Cause instead (see .btn below). */
+input,
+textarea {
+  font-family: "Genos", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
 #app {
   height: 100%;
 }
@@ -178,8 +188,10 @@ body {
 /* Small branding image pinned to the bottom-left corner on every page -
    rendered once at the app-shell level (see app.js), with a different PNG
    per view (corner-home.png, corner-chat.png, ... - see cornerSrc).
-   Purely decorative - no click target, low z-index so it never sits above
-   the sidebar drawer/backdrop (39/40) or the mobile menu button (50). */
+   Purely decorative - no click target (pointer-events:none) and a negative
+   z-index so it paints behind every page's normal-flow content (messages,
+   cards, panels) instead of on top of it - it only shows up against the
+   plain body background, never overlapping text. */
 .corner-mascot {
   position: fixed;
   left: calc(280px + 16px); /* clears the desktop sidebar's own 280px width */
@@ -188,44 +200,25 @@ body {
   width: auto;
   object-fit: contain;
   pointer-events: none;
-  z-index: 5;
+  z-index: -1;
   filter: drop-shadow(0 10px 24px rgba(61, 57, 41, 0.2));
 }
 
 /* Quick logout, reachable from any page without opening the sidebar drawer
    first (see app.js). Reuses .home-float's circle-button look (defined
-   further down) but overrides its position:absolute with :fixed - .home-float
-   is normally positioned relative to .home-hero-wrap, which doesn't apply
-   here since this sits at the app-shell level, not inside HomeView.
+   further down), including its bob animation and default size - only the
+   position is overridden from :absolute (relative to .home-hero-wrap) to
+   :fixed, since this sits at the app-shell level, not inside HomeView.
    Sits well clear of .chat-input's send button, which is pinned to the
    same bottom-right corner of the viewport.
-   Selectors below are compound (.home-float.corner-x) rather than bare
-   (.corner-x) - .home-float's own width/height/animation/position rule is
-   defined much further down this file, and on equal specificity a later
-   rule always wins regardless of which one is "meant" to override, so a
-   bare .corner-x here would silently lose to it. */
+   Selector below is compound (.home-float.corner-logout) rather than bare
+   (.corner-logout) purely for specificity - see the note further down by
+   .home-float's own rule. */
 .home-float.corner-logout {
   position: fixed;
   right: 14px;
   bottom: 96px;
   z-index: 6;
-  width: 52px;
-  height: 52px;
-  animation: none;
-}
-
-/* Light/dark toggle - used to live inside HomeView's hero, now a global
-   fixed button (same .home-float reuse as .corner-logout above) so it's
-   reachable from every page, not just home. Top-left (not top-right) so it
-   doesn't sit on top of the Notes page's own top-right "+" button. */
-.home-float.corner-theme-toggle {
-  position: fixed;
-  left: 14px;
-  top: 14px;
-  z-index: 6;
-  width: 44px;
-  height: 44px;
-  animation: none;
 }
 
 /* Pure PNG, no button chrome behind it - without this, .home-float-fallback's
@@ -382,10 +375,16 @@ body {
 
 /* Subtle "add" affordance (New conversation / New folder) - just a plain
    gray + that gets a background on hover, no colored box or label, so it
-   doesn't compete with the Favorites row above it for attention. */
+   doesn't compete with the Favorites row above it for attention.
+   Explicit width (rather than align-self:center, which left it shrunk to
+   .icon-btn's 38x38 square) makes the hover background a flat wide bar
+   instead of a square, matching .new-chat-row's row-shaped hover further
+   up this file. */
 .new-item-btn {
-  align-self: center;
-  margin: 4px 0 8px;
+  width: calc(100% - 24px);
+  height: 26px;
+  margin: 4px 12px 8px;
+  border-radius: 6px;
 }
 
 .session-list,
@@ -588,7 +587,6 @@ body {
   border-radius: 5px;
   border: 1px solid var(--accent);
   font-size: 13.5px;
-  font-family: inherit;
 }
 
 .session-rename-input:focus {
@@ -1032,7 +1030,6 @@ body {
   border-radius: 10px;
   border: 1px solid var(--border);
   font-size: 14px;
-  font-family: inherit;
   overflow-y: auto;
 }
 
@@ -1056,6 +1053,7 @@ body {
   padding: 9px 16px;
   cursor: pointer;
   font-size: 13.5px;
+  font-family: "Cause", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
 .btn:hover {
@@ -1192,13 +1190,52 @@ body {
   margin-top: 0;
 }
 
+/* "?" tooltip beside each search-panel label - holds the explanatory text
+   and "e.g." example that used to sit inline in the label/placeholder,
+   only shown on hover so the label itself stays short. */
+.search-panel-help {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 4px;
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.search-panel-help-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+.search-panel-help-tip {
+  position: absolute;
+  bottom: 130%;
+  left: 0;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: "Genos", sans-serif;
+  color: var(--text);
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease;
+  z-index: 20;
+}
+
+.search-panel-help:hover .search-panel-help-tip {
+  opacity: 1;
+}
+
 .search-panel-input {
   width: 100%;
   padding: 9px 12px;
   border-radius: 6px;
   border: 1px solid var(--border);
   font-size: 13.5px;
-  font-family: inherit;
 }
 
 .search-panel-input:focus {
@@ -1224,7 +1261,6 @@ body {
   border-radius: 6px;
   border: 1px solid var(--border);
   font-size: 13.5px;
-  font-family: inherit;
   resize: vertical;
   margin-bottom: 10px;
 }
@@ -1631,7 +1667,6 @@ body {
   border: 1px solid var(--border);
   font-size: 14px;
   font-weight: 600;
-  font-family: inherit;
   margin-bottom: 8px;
 }
 
@@ -1719,6 +1754,27 @@ body {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
   z-index: 20;
   white-space: nowrap;
+}
+
+.tag-picker-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: normal;
+}
+
+.tag-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 400;
+}
+
+.tag-picker-empty {
+  color: var(--text-muted);
 }
 
 .note-editor-textarea {
@@ -2099,7 +2155,6 @@ select {
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  font-family: inherit;
   font-size: 13.5px;
 }
 
@@ -2367,6 +2422,15 @@ select {
   animation-delay: 1.8s;
 }
 
+/* Home-page-only light/dark toggle - mirrors .home-float-notes' top-center
+   slot but at the bottom, since notes already claimed top-center. */
+.home-float-theme {
+  bottom: -30px;
+  left: 50%;
+  margin-left: -34px;
+  animation-delay: 2.25s;
+}
+
 /* Rainy today - swap just the weather float's circle to a light grey,
    everything else (icon color, other floats) stays as-is. See
    HomeView.js's isRaining. */
@@ -2545,17 +2609,8 @@ select {
   }
 
   .home-float.corner-logout {
-    width: 44px;
-    height: 44px;
     right: 8px;
     bottom: 78px; /* clears .chat-input's send button, pinned to the same corner */
-  }
-
-  .home-float.corner-theme-toggle {
-    width: 36px;
-    height: 36px;
-    left: 8px;
-    top: 8px;
   }
 
   .mobile-menu-btn {
@@ -2650,6 +2705,11 @@ select {
 
   .home-float-notes {
     top: -20px;
+    margin-left: -26px;
+  }
+
+  .home-float-theme {
+    bottom: -20px;
     margin-left: -26px;
   }
 

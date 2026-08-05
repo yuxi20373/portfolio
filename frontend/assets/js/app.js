@@ -82,13 +82,6 @@ const App = {
         <img src="assets/images/logout.png" alt="" @error="onCornerImgError" />
       </span>
     </button>
-
-    <button class="home-float corner-theme-toggle" title="Toggle light / dark mode" @click="store.toggleTheme()">
-      <span class="home-float-inner">
-        <span class="home-float-fallback" v-html="store.theme === 'dark' ? icons.sun : icons.moon"></span>
-        <img :src="store.theme === 'dark' ? 'assets/images/dark.png' : 'assets/images/light.png'" alt="" @error="onCornerImgError" @load="onCornerImgLoad" />
-      </span>
-    </button>
   </div>
   `,
 };
