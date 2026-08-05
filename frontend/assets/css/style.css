@@ -261,6 +261,18 @@ body {
   height: 18px;
 }
 
+/* Favorite toggle buttons (wiki/chat/note toolbars) - no background box in
+   any state, just the bookmark icon itself (filled = favorited). */
+.icon-btn.favorite-btn,
+.icon-btn.favorite-btn:hover:not(.active) {
+  background: none;
+}
+
+.icon-btn.favorite-btn.active {
+  background: none;
+  color: var(--accent);
+}
+
 .search-box {
   position: relative;
   margin: 10px 12px;
@@ -851,6 +863,7 @@ body {
 }
 
 .empty-state {
+  font-family: "Quando", serif;
   color: var(--text-muted);
   padding: 30px;
   text-align: center;
@@ -1069,6 +1082,26 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 10px;
+  margin-bottom: 18px;
+}
+
+/* Groups store.allNotesByDate's sections - same idea as the calendar
+   sidebar's .notes-favorites-date, sized for the full-width page instead
+   of a narrow drawer. */
+.notes-date-sep {
+  margin: 4px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* Solid pill - accent background, white text (vs. the default soft .tag) -
+   used for the Notes page's per-note tag chips. */
+.tag-solid {
+  background: var(--accent);
+  color: #fff;
 }
 
 .wiki-toolbar {
@@ -1079,27 +1112,32 @@ body {
   flex-wrap: wrap;
 }
 
-/* Purely decorative, inside the Search button - hidden via onIconError
-   (see WikiView.js) until assets/images/icon-search.png is dropped in. */
-.wiki-search-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.wiki-search-icon {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-  margin: -4px 0; /* let it slightly overhang the button's own padding */
-}
-
 .search-panel {
+  position: relative;
   border: 1px solid var(--accent);
   background: var(--accent-soft);
   border-radius: 8px;
   padding: 14px;
   margin-bottom: 18px;
+}
+
+/* Purely decorative - invisible until you hover the panel, then fades in
+   in the top-right corner. Hidden via onIconError (see WikiView.js) until
+   assets/images/icon-search.png is dropped in. */
+.wiki-search-icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease;
+}
+
+.search-panel:hover .wiki-search-icon {
+  opacity: 1;
 }
 
 .search-panel-label {
@@ -2096,6 +2134,13 @@ select {
   text-align: center;
 }
 
+.home-welcome {
+  font-family: "Akaya Kanadaka", cursive;
+  font-size: 44px;
+  color: var(--accent-hover);
+  margin-bottom: -20px; /* home-panel's own 36px gap is plenty before the hero below */
+}
+
 .home-hero-wrap {
   position: relative;
   width: min(576px, 82vw);
@@ -2452,6 +2497,11 @@ select {
   .home-panel {
     padding: 68px 16px 24px; /* a bit more than the other views' 56px - see .home-float-wiki below */
     gap: 24px;
+  }
+
+  .home-welcome {
+    font-size: 32px;
+    margin-bottom: -12px;
   }
 
   .msg {

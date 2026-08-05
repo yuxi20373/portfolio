@@ -32,11 +32,13 @@ class FavoriteUpdate(BaseModel):
 class NoteTemplateCreate(BaseModel):
     name: str
     content: str = ""
+    tags: Optional[list[str]] = None
 
 
 class NoteTemplateUpdate(BaseModel):
     name: Optional[str] = None
     content: Optional[str] = None
+    tags: Optional[list[str]] = None
 
 
 class NoteTagCreate(BaseModel):
@@ -171,7 +173,7 @@ def list_note_templates(db: DBSession = Depends(get_db), user: models.User = Dep
         .order_by(models.NoteTemplate.name.asc())
         .all()
     )
-    return [{"id": t.id, "name": t.name, "content": t.content} for t in templates]
+    return [{"id": t.id, "name": t.name, "content": t.content, "tags": t.tags or []} for t in templates]
 
 
 @router.post("/templates")
@@ -181,11 +183,11 @@ def create_note_template(
     name = payload.name.strip()
     if not name:
         raise HTTPException(400, "name cannot be empty")
-    t = models.NoteTemplate(name=name, content=payload.content, user_id=user.id)
+    t = models.NoteTemplate(name=name, content=payload.content, tags=payload.tags or [], user_id=user.id)
     db.add(t)
     db.commit()
     db.refresh(t)
-    return {"id": t.id, "name": t.name, "content": t.content}
+    return {"id": t.id, "name": t.name, "content": t.content, "tags": t.tags or []}
 
 
 def _get_owned_template(db: DBSession, template_id: int, user: models.User) -> models.NoteTemplate:
@@ -210,8 +212,10 @@ def update_note_template(
         t.name = name
     if payload.content is not None:
         t.content = payload.content
+    if payload.tags is not None:
+        t.tags = payload.tags
     db.commit()
-    return {"id": t.id, "name": t.name, "content": t.content}
+    return {"id": t.id, "name": t.name, "content": t.content, "tags": t.tags or []}
 
 
 @router.delete("/templates/{template_id}")

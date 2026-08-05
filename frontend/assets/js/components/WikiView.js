@@ -138,14 +138,11 @@ export default {
   template: `
   <div class="main-panel wiki-panel">
     <div class="wiki-toolbar">
-      <button class="btn secondary wiki-search-btn" @click="showSearchBox = !showSearchBox">
-        <img class="wiki-search-icon" src="assets/images/icon-search.png" alt="" @error="onIconError" />
-        Search
-      </button>
+      <button class="btn secondary" @click="showSearchBox = !showSearchBox">Search</button>
       <template v-if="store.currentWikiEntry && !editing">
         <button class="btn secondary" @click="startEdit">Edit</button>
         <button class="btn secondary" @click="showAdjustDrawer = true">Adjust</button>
-        <button class="icon-btn" :class="{active: store.currentWikiEntry.is_favorited}" title="Favorite this entry"
+        <button class="icon-btn favorite-btn" :class="{active: store.currentWikiEntry.is_favorited}" title="Favorite this entry"
                 @click="store.toggleWikiEntryFavorite(store.currentWikiEntry.id)"
                 v-html="store.currentWikiEntry.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
         <button class="btn danger" @click="removeEntry">
@@ -155,6 +152,7 @@ export default {
     </div>
 
     <div v-if="showSearchBox" class="search-panel">
+      <img class="wiki-search-icon" src="assets/images/icon-search.png" alt="" @error="onIconError" />
       <label class="search-panel-label">Keyword (like what you'd type into a search engine)</label>
       <input type="text" v-model="searchKeyword" class="search-panel-input"
              placeholder="e.g. 軟體開發 RD"

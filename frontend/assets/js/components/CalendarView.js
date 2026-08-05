@@ -137,7 +137,9 @@ export default {
     // Notes page) - just a one-time copy, the note isn't linked back to it.
     function applyNoteTemplate() {
       const t = store.noteTemplates.find((x) => x.id === Number(newNoteTemplateId.value));
-      if (t) newNoteContent.value = t.content;
+      if (!t) return;
+      newNoteContent.value = t.content;
+      if (t.tags && t.tags.length) newNoteTags.value = t.tags.join(", ");
     }
 
     async function saveNote() {
@@ -378,7 +380,7 @@ export default {
             <h2>{{ store.viewingNote.title }}</h2>
             <div class="note-detail-actions">
               <button class="icon-btn" title="Edit" @click="startEditNote" v-html="icons.edit"></button>
-              <button class="icon-btn" :class="{active: store.viewingNote.is_favorited}" title="Favorite"
+              <button class="icon-btn favorite-btn" :class="{active: store.viewingNote.is_favorited}" title="Favorite"
                       @click="store.toggleNoteFavorite(store.viewingNote.id)"
                       v-html="store.viewingNote.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
               <button class="icon-btn" title="Delete" @click="removeNote" v-html="icons.trash"></button>

@@ -73,7 +73,7 @@ export default {
         <option v-for="m in store.models" :key="m.id" :value="m.id">{{ m.recommended ? '★ ' : '' }}{{ m.name }}</option>
       </select>
       <button class="icon-btn compare-btn" title="Compare models" @click="showCompare = true" v-html="icons.compare"></button>
-      <button class="icon-btn" :class="{active: store.currentSession.is_favorited}" title="Favorite this conversation"
+      <button class="icon-btn favorite-btn" :class="{active: store.currentSession.is_favorited}" title="Favorite this conversation"
               @click="store.toggleSessionFavorite(store.currentSessionId)"
               v-html="store.currentSession.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
     </div>

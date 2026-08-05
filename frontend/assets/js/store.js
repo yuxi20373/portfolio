@@ -1,6 +1,23 @@
 const { reactive } = window.Vue;
 import { api } from "./api.js";
 
+// dateStr -> [note, ...] - shared by favoritedNotesByDate and allNotesByDate
+// below, both of which render as a date-grouped, separator-divided list
+// instead of showing each note's own date individually.
+function groupNotesByDate(notes) {
+  const groups = {};
+  const order = [];
+  for (const n of notes) {
+    const d = (n.created_at || "").slice(0, 10);
+    if (!groups[d]) {
+      groups[d] = [];
+      order.push(d);
+    }
+    groups[d].push(n);
+  }
+  return order.map((date) => ({ date, notes: groups[date] }));
+}
+
 export const store = reactive({
   // login: token has no expiry (see backend/app/models/auth.py) - it's
   // valid until logout() explicitly deletes it, so staying logged in
@@ -108,20 +125,15 @@ export const store = reactive({
     return list;
   },
 
-  // dateStr -> [note, ...], newest date first - for the calendar sidebar's
-  // date-grouped, separator-divided Favorites list (see Sidebar.js).
+  // For the calendar sidebar's date-grouped, separator-divided Favorites
+  // list (see Sidebar.js).
   get favoritedNotesByDate() {
-    const groups = {};
-    const order = [];
-    for (const n of this.favoritedNotes) {
-      const d = (n.created_at || "").slice(0, 10);
-      if (!groups[d]) {
-        groups[d] = [];
-        order.push(d);
-      }
-      groups[d].push(n);
-    }
-    return order.map((date) => ({ date, notes: groups[date] }));
+    return groupNotesByDate(this.favoritedNotes);
+  },
+
+  // Same grouping for the standalone Notes page's full browser (see NotesView.js).
+  get allNotesByDate() {
+    return groupNotesByDate(this.allNotes);
   },
 
   async loadSessions() {
@@ -480,8 +492,8 @@ export const store = reactive({
     this.noteTemplates = await api.get("/api/notes/templates");
   },
 
-  async createNoteTemplate(name, content) {
-    await api.post("/api/notes/templates", { name, content });
+  async createNoteTemplate(name, content, tags) {
+    await api.post("/api/notes/templates", { name, content, tags: tags || [] });
     await this.loadNoteTemplates();
   },
 

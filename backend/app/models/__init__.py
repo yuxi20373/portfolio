@@ -1,7 +1,7 @@
 from .auth import User, AuthToken
 from .chat import ChatSession, ChatMessage
 from .wiki import WikiEntry, WikiFolder
-from .note import Note, NoteTemplate, NoteTag
+from .note import Note, NoteTemplate, NoteTag, MemoItem
 from .news import NewsArticle, NewsScrapeLog, NewsSourceSetting
 
 __all__ = [
@@ -14,6 +14,7 @@ __all__ = [
     "Note",
     "NoteTemplate",
     "NoteTag",
+    "MemoItem",
     "NewsArticle",
     "NewsScrapeLog",
     "NewsSourceSetting",

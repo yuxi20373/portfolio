@@ -160,6 +160,7 @@ export default {
   },
   template: `
   <div class="main-panel home-panel">
+    <div class="home-welcome">Welcome, {{ store.username }}</div>
     <div class="home-hero-wrap" ref="heroWrap" @pointermove="handlePointerMove" @pointerleave="resetPush">
       <img class="home-hero-img" :src="heroSrc" alt="" @error="onHeroError" />
 
