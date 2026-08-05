@@ -31,6 +31,10 @@ class WikiAdjustApplyRequest(BaseModel):
     summary: Optional[str] = None
 
 
+class FavoriteUpdate(BaseModel):
+    favorited: bool
+
+
 def _get_owned_entry(db: DBSession, entry_id: int, user: models.User) -> models.WikiEntry:
     e = db.query(models.WikiEntry).get(entry_id)
     if not e or e.user_id != user.id:
@@ -61,6 +65,7 @@ def list_wiki(db: DBSession = Depends(get_db), user: models.User = Depends(get_c
             "summary": e.summary,
             "tags": e.tags,
             "folder_id": e.folder_id,
+            "is_favorited": e.is_favorited,
             "updated_at": e.updated_at,
         }
         for e in entries
@@ -82,6 +87,7 @@ def _wiki_entry_detail(db: DBSession, e: models.WikiEntry, user: models.User):
         "content": e.content,
         "tags": e.tags,
         "folder_id": e.folder_id,
+        "is_favorited": e.is_favorited,
         "updated_at": e.updated_at,
         "related": related,
     }
@@ -126,6 +132,19 @@ def update_wiki_entry(
     e.updated_at = datetime.utcnow()
     db.commit()
     return _wiki_entry_detail(db, e, user)
+
+
+@router.patch("/wiki/{entry_id}/favorite")
+def update_wiki_favorite(
+    entry_id: int,
+    payload: FavoriteUpdate,
+    db: DBSession = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    e = _get_owned_entry(db, entry_id, user)
+    e.is_favorited = payload.favorited
+    db.commit()
+    return {"id": e.id, "is_favorited": e.is_favorited}
 
 
 @router.delete("/wiki/{entry_id}")

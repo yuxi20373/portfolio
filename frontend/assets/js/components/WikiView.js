@@ -143,6 +143,9 @@ export default {
       <template v-if="store.currentWikiEntry && !editing">
         <button class="btn secondary" @click="startEdit">Edit</button>
         <button class="btn secondary" @click="showAdjustDrawer = true">Adjust</button>
+        <button class="icon-btn" :class="{active: store.currentWikiEntry.is_favorited}" title="Favorite this entry"
+                @click="store.toggleWikiEntryFavorite(store.currentWikiEntry.id)"
+                v-html="store.currentWikiEntry.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
         <button class="btn danger" @click="removeEntry">
           <span v-html="icons.trash"></span> Delete entry
         </button>

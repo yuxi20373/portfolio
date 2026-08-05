@@ -15,9 +15,28 @@ export default {
     const editingFolderName = ref("");
     const movingEntryId = ref(null);
 
+    const notesFavoritesOpen = ref(false);
+
     onMounted(() => {
       store.loadWikiFolders();
     });
+
+    // Same graceful-fallback pattern as HomeView.js's decorative images -
+    // if the PNG isn't there yet, just hide the broken <img>.
+    function onIconError(e) {
+      e.target.style.display = "none";
+    }
+
+    async function toggleNotesFavorites() {
+      notesFavoritesOpen.value = !notesFavoritesOpen.value;
+      if (notesFavoritesOpen.value) await store.loadFavoritedNotes();
+    }
+
+    // "2026-08-05" -> "2026/8/5"
+    function fmtDateLabel(dateStr) {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      return `${y}/${m}/${d}`;
+    }
 
     function setView(v) {
       store.view = v;
@@ -27,6 +46,11 @@ export default {
         if (store.wikiFolders.length === 0) store.loadWikiFolders();
       }
       if (v === "news" && store.newsSources.length === 0) store.loadNewsSources();
+      if (v === "notes") {
+        store.loadAllNotes();
+        if (!store.noteTemplates.length) store.loadNoteTemplates();
+        if (!store.noteTags.length) store.loadNoteTags();
+      }
     }
 
     function onSearchInput(e) {
@@ -168,14 +192,20 @@ export default {
       toggleMoveMenu,
       doMove,
       sortedNewsSources,
+      onIconError,
+      notesFavoritesOpen,
+      toggleNotesFavorites,
+      fmtDateLabel,
     };
   },
   template: `
   <aside class="sidebar" :class="{open: store.sidebarOpen}">
     <div class="icon-nav">
+      <button class="icon-btn" :class="{active: store.view==='home'}" @click="setView('home')" title="Home" v-html="icons.home"></button>
       <button class="icon-btn" :class="{active: store.view==='chat'}" @click="setView('chat')" title="Chat" v-html="icons.chat"></button>
       <button class="icon-btn" :class="{active: store.view==='wiki'}" @click="setView('wiki')" title="Knowledge base" v-html="icons.wiki"></button>
       <button class="icon-btn" :class="{active: store.view==='calendar'}" @click="setView('calendar')" title="Calendar" v-html="icons.calendar"></button>
+      <button class="icon-btn" :class="{active: store.view==='notes'}" @click="setView('notes')" title="Notes" v-html="icons.notes"></button>
       <button class="icon-btn" :class="{active: store.view==='news'}" @click="setView('news')" title="News" v-html="icons.news"></button>
     </div>
 
@@ -192,6 +222,15 @@ export default {
       </div>
 
       <div class="session-list">
+        <div class="session-item favorites-row" :class="{active: store.sessionFavoritesOnly}"
+             @click="store.sessionFavoritesOnly = !store.sessionFavoritesOnly">
+          <span class="favorites-row-icon">
+            <span v-html="icons.bookmarkFilled"></span>
+            <img src="assets/images/star.png" alt="" @error="onIconError" />
+          </span>
+          <span class="session-title">Favorites</span>
+        </div>
+
         <div v-if="store.searching" class="hint">Searching…</div>
         <div v-for="s in store.visibleSessions" :key="s.id"
              class="session-item" :class="{active: s.id === store.currentSessionId}">
@@ -207,6 +246,7 @@ export default {
           <template v-else>
             <span class="session-title" @click="store.selectSession(s.id)">{{ s.title }}</span>
             <span class="session-actions">
+              <button class="mini-icon-btn" :class="{active: s.is_favorited}" title="Favorite" @click.stop="store.toggleSessionFavorite(s.id)" v-html="s.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
               <button class="mini-icon-btn" title="Rename" @click.stop="startRename(s)" v-html="icons.edit"></button>
               <button class="mini-icon-btn" title="Delete" @click.stop="removeSession(s)" v-html="icons.trash"></button>
             </span>
@@ -231,6 +271,15 @@ export default {
       </div>
 
       <div class="wiki-list">
+        <div class="session-item favorites-row" :class="{active: store.wikiFavoritesOnly}"
+             @click="store.wikiFavoritesOnly = !store.wikiFavoritesOnly">
+          <span class="favorites-row-icon">
+            <span v-html="icons.bookmarkFilled"></span>
+            <img src="assets/images/star.png" alt="" @error="onIconError" />
+          </span>
+          <span class="session-title">Favorites</span>
+        </div>
+
         <div v-for="group in wikiGroups" :key="group.key" class="wiki-group">
           <div class="wiki-group-header" @click="toggleGroup(group.key)">
             <span class="wiki-group-chevron" :class="{collapsed: groupCollapsed(group.key)}">▾</span>
@@ -259,6 +308,7 @@ export default {
               <span class="wiki-item-icon" v-html="icons.doc"></span>
               <span class="wiki-item-title" @click="store.selectWikiEntry(w.id)">{{ w.title }}</span>
               <span class="wiki-item-actions">
+                <button class="mini-icon-btn" :class="{active: w.is_favorited}" title="Favorite" @click.stop="store.toggleWikiEntryFavorite(w.id)" v-html="w.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
                 <div class="move-wrap">
                   <button class="mini-icon-btn" title="Move to folder" @click.stop="toggleMoveMenu(w.id)" v-html="icons.move"></button>
                   <div v-if="movingEntryId === w.id" class="move-popover" @click.stop>
@@ -278,9 +328,12 @@ export default {
 
     <template v-else-if="store.view === 'news'">
       <div class="session-list">
-        <div class="session-item" :class="{active: store.newsSelectedSource === '__favorites__'}"
+        <div class="session-item favorites-row" :class="{active: store.newsSelectedSource === '__favorites__'}"
              @click="store.selectNewsSource('__favorites__')">
-          <span class="wiki-item-icon" v-html="icons.bookmarkFilled"></span>
+          <span class="favorites-row-icon">
+            <span v-html="icons.bookmarkFilled"></span>
+            <img src="assets/images/star.png" alt="" @error="onIconError" />
+          </span>
           <span class="session-title">Favorites</span>
         </div>
 
@@ -297,6 +350,28 @@ export default {
           </span>
         </div>
         <div v-if="!store.newsSources.length" class="hint">Loading sources…</div>
+      </div>
+    </template>
+
+    <template v-else-if="store.view === 'calendar'">
+      <div class="session-list">
+        <div class="session-item favorites-row" :class="{active: notesFavoritesOpen}" @click="toggleNotesFavorites">
+          <span class="favorites-row-icon">
+            <span v-html="icons.bookmarkFilled"></span>
+            <img src="assets/images/star.png" alt="" @error="onIconError" />
+          </span>
+          <span class="session-title">Favorites</span>
+        </div>
+
+        <template v-if="notesFavoritesOpen">
+          <template v-for="group in store.favoritedNotesByDate" :key="group.date">
+            <div class="notes-favorites-date">{{ fmtDateLabel(group.date) }}</div>
+            <div v-for="n in group.notes" :key="n.id" class="session-item" @click="store.openNoteView(n.id)">
+              <span class="session-title">{{ n.title }}</span>
+            </div>
+          </template>
+          <div v-if="!store.favoritedNotesByDate.length" class="hint">No favorited notes yet</div>
+        </template>
       </div>
     </template>
 

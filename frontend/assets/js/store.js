@@ -30,6 +30,7 @@ export const store = reactive({
 
   // sidebar filters (conversations)
   dateFilter: null, // "YYYY-MM-DD" | null
+  sessionFavoritesOnly: false,
 
   // Set by the home page's mini calendar (see NoteMiniCalendar.js) to tell
   // CalendarView which date to jump to and select on mount; cleared once consumed.
@@ -44,6 +45,17 @@ export const store = reactive({
   currentWikiEntry: null,
   wikiSearchQuery: "",
   wikiFolders: [], // user-created folders (manual organization, not LLM-assigned)
+  wikiFavoritesOnly: false,
+
+  // notes (calendar page's sidebar "Favorites" list, and the shared
+  // note-viewing drawer - see CalendarView.js and Sidebar.js's calendar branch)
+  favoritedNotes: [], // flat list, newest first - grouped by date in the sidebar
+  viewingNote: null,
+  loadingNoteView: false,
+  noteTemplates: [],
+  noteTags: [],
+  allNotes: [], // standalone Notes page's full list (see loadAllNotes)
+  notesTagFilter: null, // tag name | null - standalone Notes page's filter
 
   // news
   newsSources: [], // [{key, name, enabled, pinned}, ...]
@@ -70,6 +82,9 @@ export const store = reactive({
     if (this.dateFilter) {
       list = list.filter((s) => (s.created_at || "").slice(0, 10) === this.dateFilter);
     }
+    if (this.sessionFavoritesOnly) {
+      list = list.filter((s) => s.is_favorited);
+    }
     return list;
   },
 
@@ -82,7 +97,26 @@ export const store = reactive({
         (w) => w.title.toLowerCase().includes(q) || (w.tags || []).some((t) => t.toLowerCase().includes(q))
       );
     }
+    if (this.wikiFavoritesOnly) {
+      list = list.filter((w) => w.is_favorited);
+    }
     return list;
+  },
+
+  // dateStr -> [note, ...], newest date first - for the calendar sidebar's
+  // date-grouped, separator-divided Favorites list (see Sidebar.js).
+  get favoritedNotesByDate() {
+    const groups = {};
+    const order = [];
+    for (const n of this.favoritedNotes) {
+      const d = (n.created_at || "").slice(0, 10);
+      if (!groups[d]) {
+        groups[d] = [];
+        order.push(d);
+      }
+      groups[d].push(n);
+    }
+    return order.map((date) => ({ date, notes: groups[date] }));
   },
 
   async loadSessions() {
@@ -109,6 +143,14 @@ export const store = reactive({
   async renameSession(id, title) {
     await api.patch(`/api/sessions/${id}`, { title });
     await this.loadSessions();
+  },
+
+  async toggleSessionFavorite(id) {
+    const s = this.sessions.find((x) => x.id === id);
+    if (!s) return;
+    const next = !s.is_favorited;
+    await api.patch(`/api/sessions/${id}/favorite`, { favorited: next });
+    s.is_favorited = next;
   },
 
   async loadModels() {
@@ -214,6 +256,14 @@ export const store = reactive({
   async updateWikiEntry(id, patch) {
     this.currentWikiEntry = await api.patch(`/api/wiki/${id}`, patch);
     await this.loadWikiEntries();
+  },
+
+  async toggleWikiEntryFavorite(id) {
+    const w = this.wikiEntries.find((x) => x.id === id);
+    const next = !(w ? w.is_favorited : this.currentWikiEntry && this.currentWikiEntry.is_favorited);
+    await api.patch(`/api/wiki/${id}/favorite`, { favorited: next });
+    if (w) w.is_favorited = next;
+    if (this.currentWikiEntry && this.currentWikiEntry.id === id) this.currentWikiEntry.is_favorited = next;
   },
 
   // --- Folders: user-created, manual organization only ---
@@ -361,6 +411,99 @@ export const store = reactive({
     this.newsArticleSiblings = [];
   },
 
+  // --- Notes: shared viewing drawer (CalendarView.js renders it, both its
+  // own day-detail list and Sidebar.js's calendar-branch Favorites list open
+  // notes through these same two functions) ---
+
+  async openNoteView(id) {
+    this.loadingNoteView = true;
+    this.viewingNote = null;
+    try {
+      this.viewingNote = await api.get(`/api/notes/${id}`);
+    } finally {
+      this.loadingNoteView = false;
+    }
+  },
+
+  closeNoteView() {
+    this.viewingNote = null;
+  },
+
+  // patch: any subset of {title, content, tags}
+  async updateNote(id, patch) {
+    const updated = await api.patch(`/api/notes/${id}`, patch);
+    if (this.viewingNote && this.viewingNote.id === id) this.viewingNote = updated;
+    const idx = this.favoritedNotes.findIndex((n) => n.id === id);
+    if (idx !== -1) {
+      if (updated.is_favorited) this.favoritedNotes[idx] = updated;
+      else this.favoritedNotes.splice(idx, 1);
+    }
+    return updated;
+  },
+
+  async deleteNote(id) {
+    await api.del(`/api/notes/${id}`);
+    if (this.viewingNote && this.viewingNote.id === id) this.viewingNote = null;
+    this.favoritedNotes = this.favoritedNotes.filter((n) => n.id !== id);
+  },
+
+  async toggleNoteFavorite(id) {
+    const target = this.viewingNote && this.viewingNote.id === id ? this.viewingNote : null;
+    const inFavList = this.favoritedNotes.find((n) => n.id === id);
+    const next = !((target && target.is_favorited) || (inFavList && inFavList.is_favorited));
+    await api.patch(`/api/notes/${id}/favorite`, { favorited: next });
+    if (target) target.is_favorited = next;
+    if (inFavList) inFavList.is_favorited = next;
+    else if (next) await this.loadFavoritedNotes();
+    if (!next) this.favoritedNotes = this.favoritedNotes.filter((n) => n.id !== id);
+  },
+
+  async loadFavoritedNotes() {
+    this.favoritedNotes = await api.get("/api/notes?favorited=true");
+  },
+
+  // Standalone Notes page's full browser - optionally filtered by tag (see
+  // notesTagFilter, set via the page's tag chips).
+  async loadAllNotes() {
+    const path = this.notesTagFilter ? `/api/notes?tag=${encodeURIComponent(this.notesTagFilter)}` : "/api/notes";
+    this.allNotes = await api.get(path);
+  },
+
+  // --- Notes: templates & tags (standalone Notes page) ---
+
+  async loadNoteTemplates() {
+    this.noteTemplates = await api.get("/api/notes/templates");
+  },
+
+  async createNoteTemplate(name, content) {
+    await api.post("/api/notes/templates", { name, content });
+    await this.loadNoteTemplates();
+  },
+
+  async updateNoteTemplate(id, patch) {
+    await api.patch(`/api/notes/templates/${id}`, patch);
+    await this.loadNoteTemplates();
+  },
+
+  async deleteNoteTemplate(id) {
+    await api.del(`/api/notes/templates/${id}`);
+    await this.loadNoteTemplates();
+  },
+
+  async loadNoteTags() {
+    this.noteTags = await api.get("/api/notes/tags");
+  },
+
+  async createNoteTag(name) {
+    await api.post("/api/notes/tags", { name });
+    await this.loadNoteTags();
+  },
+
+  async deleteNoteTag(id) {
+    await api.del(`/api/notes/tags/${id}`);
+    await this.loadNoteTags();
+  },
+
   // --- Mobile sidebar drawer ---
 
   toggleSidebar() {
@@ -420,6 +563,12 @@ export const store = reactive({
     this.currentWikiId = null;
     this.currentWikiEntry = null;
     this.wikiFolders = [];
+    this.favoritedNotes = [];
+    this.viewingNote = null;
+    this.noteTemplates = [];
+    this.noteTags = [];
+    this.allNotes = [];
+    this.notesTagFilter = null;
   },
 });
 

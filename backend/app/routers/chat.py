@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session as DBSession
 
 from .. import models
@@ -9,6 +10,10 @@ from ..schemas.chat import SessionCreate, SessionUpdate, SessionOut, MessageOut,
 from ..services.chat.chat_service import get_or_create_session, process_chat_message
 
 router = APIRouter(prefix="/api/sessions", tags=["chat"])
+
+
+class FavoriteUpdate(BaseModel):
+    favorited: bool
 
 
 @router.post("", response_model=SessionOut)
@@ -72,6 +77,20 @@ def update_session(
             raise HTTPException(400, "unknown model")
         s.model_name = payload.model
 
+    db.commit()
+    db.refresh(s)
+    return s
+
+
+@router.patch("/{session_id}/favorite", response_model=SessionOut)
+def update_session_favorite(
+    session_id: int,
+    payload: FavoriteUpdate,
+    db: DBSession = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    s = _get_owned_session(db, session_id, user)
+    s.is_favorited = payload.favorited
     db.commit()
     db.refresh(s)
     return s

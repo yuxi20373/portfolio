@@ -9,7 +9,7 @@ export default {
   setup() {
     const draft = ref("");
     const chatWindow = ref(null);
-    const composing = ref(false);
+    const draftInput = ref(null);
     const showCompare = ref(false);
 
     async function onModelChange(modelId) {
@@ -22,26 +22,20 @@ export default {
       if (chatWindow.value) chatWindow.value.scrollTop = chatWindow.value.scrollHeight;
     }
 
-    function onCompositionStart() {
-      composing.value = true;
-    }
-    function onCompositionEnd() {
-      composing.value = false;
-    }
-
-    async function onKeydown(e) {
-      if (e.key !== "Enter" || e.shiftKey) return;
-      // Don't send while an IME (e.g. Chinese/Japanese input) is still
-      // composing - that Enter is confirming a candidate, not "send".
-      if (composing.value || e.isComposing || e.keyCode === 229) return;
-      e.preventDefault();
-      await send();
+    // Textarea grows with its content instead of a fixed height / manual
+    // drag-resize handle - CSS max-height still caps it and lets it scroll
+    // past that.
+    function autoGrow(e) {
+      const el = e.target;
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
     }
 
     async function send() {
       const text = draft.value;
       if (!text.trim()) return;
       draft.value = "";
+      if (draftInput.value) draftInput.value.style.height = "";
       await store.sendMessage(text);
       await scrollDown();
     }
@@ -63,7 +57,7 @@ export default {
     }
 
     return {
-      store, icons, draft, chatWindow, onKeydown, onCompositionStart, onCompositionEnd, send, renderMarkdown,
+      store, icons, draft, chatWindow, draftInput, autoGrow, send, renderMarkdown,
       fmtTokens, fmtCost, showCompare, onModelChange,
     };
   },
@@ -79,6 +73,9 @@ export default {
         <option v-for="m in store.models" :key="m.id" :value="m.id">{{ m.recommended ? '★ ' : '' }}{{ m.name }}</option>
       </select>
       <button class="icon-btn compare-btn" title="Compare models" @click="showCompare = true" v-html="icons.compare"></button>
+      <button class="icon-btn" :class="{active: store.currentSession.is_favorited}" title="Favorite this conversation"
+              @click="store.toggleSessionFavorite(store.currentSessionId)"
+              v-html="store.currentSession.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
     </div>
     <div class="chat-window" ref="chatWindow">
       <div v-if="!store.currentSessionId" class="empty-state">Select or start a conversation</div>
@@ -92,11 +89,9 @@ export default {
       <div v-if="store.sending" class="msg assistant hint-msg"><span class="spinner"></span> Thinking…</div>
     </div>
     <div class="chat-input">
-      <textarea v-model="draft"
-                placeholder="Type a message… (Enter to send, Shift+Enter for a new line)"
-                @keydown="onKeydown"
-                @compositionstart="onCompositionStart"
-                @compositionend="onCompositionEnd"></textarea>
+      <textarea ref="draftInput" v-model="draft"
+                placeholder="Type a message… (Enter for a new line, click Send to send)"
+                @input="autoGrow"></textarea>
       <button class="btn" :disabled="store.sending || !draft.trim()" @click="send">
         <span v-if="store.sending" class="spinner"></span>{{ store.sending ? ' Sending…' : 'Send' }}
       </button>

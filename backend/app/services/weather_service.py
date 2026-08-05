@@ -21,6 +21,16 @@ ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 RAIN_CODES = {51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99}
 
 
+def _will_rain(weather_code, probability, sum_mm) -> bool:
+    if weather_code in RAIN_CODES:
+        return True
+    if probability is not None and probability >= 40:
+        return True
+    if sum_mm is not None and sum_mm > 0.5:
+        return True
+    return False
+
+
 def get_weather_for_date(date_str: str):
     """Returns {"date", "will_rain", "precipitation_probability",
     "weather_code"} or None if no data is available for that date."""
@@ -64,17 +74,62 @@ def _try_endpoint(url: str, date_str: str, include_probability: bool):
     probability = precip_prob[idx] if idx < len(precip_prob) else None
     sum_mm = precip_sum[idx] if idx < len(precip_sum) else None
 
-    will_rain = False
-    if weather_code in RAIN_CODES:
-        will_rain = True
-    elif probability is not None and probability >= 40:
-        will_rain = True
-    elif sum_mm is not None and sum_mm > 0.5:
-        will_rain = True
-
     return {
         "date": date_str,
-        "will_rain": will_rain,
+        "will_rain": _will_rain(weather_code, probability, sum_mm),
         "precipitation_probability": probability,
         "weather_code": weather_code,
     }
+
+
+def get_rain_days_for_range(start_date: str, end_date: str) -> set:
+    """Returns the set of "YYYY-MM-DD" dates within [start_date, end_date]
+    that will/did rain - used to shade the calendar's month grid. Merges the
+    forecast and archive endpoints the same way get_weather_for_date does for
+    a single day; dates too far in the future for either endpoint (Open-Meteo's
+    forecast horizon is limited) are just left out."""
+    rain_days = set()
+    covered = set()
+    for url, include_probability in ((FORECAST_URL, True), (ARCHIVE_URL, False)):
+        for date_str, will_rain in _try_range_endpoint(url, start_date, end_date, include_probability).items():
+            if date_str in covered:
+                continue
+            covered.add(date_str)
+            if will_rain:
+                rain_days.add(date_str)
+    return rain_days
+
+
+def _try_range_endpoint(url: str, start_date: str, end_date: str, include_probability: bool) -> dict:
+    daily_vars = "weathercode,precipitation_sum"
+    if include_probability:
+        daily_vars += ",precipitation_probability_max"
+
+    params = {
+        "latitude": TAICHUNG_LAT,
+        "longitude": TAICHUNG_LON,
+        "daily": daily_vars,
+        "timezone": "Asia/Taipei",
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        resp.raise_for_status()
+        payload = resp.json()
+    except Exception:
+        return {}
+
+    daily = payload.get("daily") or {}
+    dates = daily.get("time") or []
+    codes = daily.get("weathercode") or []
+    precip_sum = daily.get("precipitation_sum") or []
+    precip_prob = daily.get("precipitation_probability_max") or []
+
+    result = {}
+    for i, date_str in enumerate(dates):
+        weather_code = codes[i] if i < len(codes) else None
+        probability = precip_prob[i] if i < len(precip_prob) else None
+        sum_mm = precip_sum[i] if i < len(precip_sum) else None
+        result[date_str] = _will_rain(weather_code, probability, sum_mm)
+    return result

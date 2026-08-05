@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session as DBSession
 from .. import models
 from ..auth import get_current_user
 from ..database import get_db
+from ..services.weather_service import get_rain_days_for_range
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
@@ -47,7 +48,10 @@ def calendar_month(
         d = dt.strftime("%Y-%m-%d")
         notes_by_day.setdefault(d, []).append(title)
 
-    return {"counts": counts, "notes": notes_by_day}
+    last_day_of_month = end - timedelta(days=1)
+    rain_days = get_rain_days_for_range(start.strftime("%Y-%m-%d"), last_day_of_month.strftime("%Y-%m-%d"))
+
+    return {"counts": counts, "notes": notes_by_day, "rain_days": sorted(rain_days)}
 
 
 @router.get("/day")

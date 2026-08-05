@@ -141,6 +141,9 @@ export default {
       <div v-if="store.newsLoading && !store.newsOverview" class="loading-row"><span class="spinner"></span> Loading…</div>
 
       <template v-else-if="store.newsOverview && featuredArticle">
+        <a v-if="store.newsOverview.site_url" class="news-site-link" :href="store.newsOverview.site_url" target="_blank" rel="noopener">
+          {{ store.newsOverview.site_name }} ↗
+        </a>
         <div class="news-featured-card">
           <button class="news-carousel-arrow left" title="Previous" :disabled="store.newsOverview.featured.length < 2" @click="store.stepNewsFeatured(-1)" v-html="icons.chevronLeft"></button>
 

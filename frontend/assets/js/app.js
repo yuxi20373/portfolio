@@ -8,6 +8,7 @@ import ChatView from "./components/ChatView.js";
 import WikiView from "./components/WikiView.js";
 import CalendarView from "./components/CalendarView.js";
 import NewsView from "./components/NewsView.js";
+import NotesView from "./components/NotesView.js";
 
 function loadAccountData() {
   store.loadSessions();
@@ -15,7 +16,7 @@ function loadAccountData() {
 }
 
 const App = {
-  components: { LoginView, Sidebar, HomeView, ChatView, WikiView, CalendarView, NewsView },
+  components: { LoginView, Sidebar, HomeView, ChatView, WikiView, CalendarView, NewsView, NotesView },
   setup() {
     store.initTheme();
     if (store.loggedIn) loadAccountData();
@@ -51,15 +52,7 @@ const App = {
       if (confirm("Log out?")) store.logout();
     }
 
-    // Quick way back home from anywhere - the home page itself no longer has
-    // a sidebar drawer entry point for it (icon-nav dropped its home/logout
-    // buttons in favor of these two app-shell-level floats).
-    function goHome() {
-      store.closeSidebar();
-      store.view = "home";
-    }
-
-    return { store, icons, onCornerImgError, onCornerImgLoad, cornerSrc, onLogoutClick, goHome };
+    return { store, icons, onCornerImgError, onCornerImgLoad, cornerSrc, onLogoutClick };
   },
   template: `
   <LoginView v-if="!store.loggedIn" />
@@ -71,16 +64,10 @@ const App = {
     <ChatView v-else-if="store.view === 'chat'" />
     <WikiView v-else-if="store.view === 'wiki'" />
     <CalendarView v-else-if="store.view === 'calendar'" />
+    <NotesView v-else-if="store.view === 'notes'" />
     <NewsView v-else-if="store.view === 'news'" />
 
     <img class="corner-mascot" :src="cornerSrc" alt="" @error="onCornerImgError" @load="onCornerImgLoad" />
-
-    <button v-if="store.view !== 'home'" class="home-float corner-home" title="Home" @click="goHome">
-      <span class="home-float-inner">
-        <span class="home-float-fallback" v-html="icons.home"></span>
-        <img src="assets/images/home.png" alt="" @error="onCornerImgError" />
-      </span>
-    </button>
 
     <button class="home-float corner-logout" title="Log out" @click="onLogoutClick">
       <span class="home-float-inner">

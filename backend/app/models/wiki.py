@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from ..database import Base
@@ -60,6 +60,7 @@ class WikiEntry(Base):
     content = Column(Text)   # full Markdown content: lead paragraph + "## Heading" sections
     tags = Column(JSON, default=list)
     related_titles = Column(JSON, default=list)
+    is_favorited = Column(Boolean, default=False, index=True)
     folder_id = Column(Integer, ForeignKey("wiki_folders.id"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 

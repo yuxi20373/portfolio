@@ -51,6 +51,7 @@ class ChatSession(Base):
     channel = Column(String(20), default="web", index=True)
     external_user_id = Column(String(100), nullable=True, index=True)
     is_open = Column(Boolean, default=True)
+    is_favorited = Column(Boolean, default=False, index=True)
     agent_mode = Column(Boolean, default=False)
     model_name = Column(String(50), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)

@@ -18,7 +18,7 @@ from ... import models
 from ...config import settings
 from ...database import SessionLocal
 from . import news_summary_service
-from .news_sources import SOURCES
+from .news_sources import SOURCES, SOURCES_BY_KEY
 
 _scrape_lock = threading.Lock()
 _UTC = ZoneInfo("UTC")
@@ -219,7 +219,14 @@ def get_overview(db: DBSession, source_key: str) -> dict:
         .order_by(models.NewsArticle.published_at.desc())
         .all()
     )
-    return _build_overview(articles)
+    overview = _build_overview(articles)
+    # Site link shown above the featured card (see news_sources.py's
+    # listing_url) - only meaningful for a single real source, not the
+    # cross-source __favorites__ pseudo-source (get_favorites_overview below).
+    source = SOURCES_BY_KEY.get(source_key)
+    overview["site_name"] = source["name"] if source else None
+    overview["site_url"] = source["listing_url"] if source else None
+    return overview
 
 
 def get_favorites_overview(db: DBSession) -> dict:
