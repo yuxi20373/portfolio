@@ -9,6 +9,7 @@ import WikiView from "./components/WikiView.js";
 import CalendarView from "./components/CalendarView.js";
 import NewsView from "./components/NewsView.js";
 import NotesView from "./components/NotesView.js";
+import Notice from "./components/Notice.js";
 
 function loadAccountData() {
   store.loadSessions();
@@ -16,7 +17,7 @@ function loadAccountData() {
 }
 
 const App = {
-  components: { LoginView, Sidebar, HomeView, ChatView, WikiView, CalendarView, NewsView, NotesView },
+  components: { LoginView, Sidebar, HomeView, ChatView, WikiView, CalendarView, NewsView, NotesView, Notice },
   setup() {
     store.initTheme();
     if (store.loggedIn) loadAccountData();
@@ -64,6 +65,7 @@ const App = {
   template: `
   <LoginView v-if="!store.loggedIn" />
   <div v-else class="app-shell">
+    <Notice />
     <button v-if="store.view !== 'home'" class="mobile-menu-btn" :class="{ open: store.sidebarOpen }" title="Menu" @click="store.toggleSidebar()" v-html="store.sidebarOpen ? icons.chevronLeft : icons.chevronRight"></button>
     <div v-if="store.sidebarOpen" class="sidebar-backdrop" @click="store.closeSidebar()"></div>
     <Sidebar />

@@ -152,6 +152,7 @@ export default {
     </div>
 
     <div v-if="showSearchBox" class="search-panel">
+      <img class="wiki-search-icon" src="assets/images/icon-search.png" alt="" @error="onIconError" />
       <div class="search-panel-fields">
         <label class="search-panel-label">Keyword
           <span class="search-panel-help">
@@ -175,7 +176,6 @@ export default {
           <span v-if="searching" class="spinner"></span>{{ searching ? ' Searching…' : 'Search & add to wiki' }}
         </button>
       </div>
-      <img class="wiki-search-icon" src="assets/images/icon-search.png" alt="" @error="onIconError" />
     </div>
 
     <div v-if="editing" class="wiki-edit-form">

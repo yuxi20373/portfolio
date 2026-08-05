@@ -19,10 +19,9 @@ const MARKDOWN_HELP = `
 export default {
   components: { DrawerShell, ColorPicker, TagPicker },
   setup() {
-    // This page always defaults to the all-notes list; the sidebar's
-    // "Template Manage" button (Sidebar.js's 'notes' branch) switches the
-    // whole main panel over to the Template Manage screen instead (see
-    // store.templateManageOpen further down).
+    // 這頁預設一律顯示全部筆記列表;側欄的「Template Manage」按鈕
+    // (Sidebar.js 的 'notes' 分支)會把整個主畫面切換成 Template Manage 畫面
+    // (見下面的 store.templateManageOpen)。
 
     const sortMode = ref("date"); // "date" | "tag"
 
@@ -174,11 +173,13 @@ export default {
       }
     }
 
-    // --- Template Manage screen (see Sidebar.js's "Template Manage" button,
-    // store.templateManageOpen) - a list of every template on the right,
-    // an edit/create form on the left. store.viewingTemplate doubles as
-    // "which one is selected" (null = the form is blank, ready to create). ---
+    // --- Template Manage 畫面(見 Sidebar.js 的「Template Manage」按鈕、
+    // store.templateManageOpen)- 預設是純清單(每一列自己有 Edit/Delete),
+    // 下面一個「+」新增。名稱/tags/內容表單只有在點「+」或某一列的 Edit
+    // 才會出現(showTemplateForm)。store.viewingTemplate 同時也代表
+    // 「表單目前載入的是哪一個」(null = 空白、準備新增)。 ---
 
+    const showTemplateForm = ref(false);
     const tmName = ref("");
     const tmContent = ref("");
     const tmTags = ref("");
@@ -196,6 +197,16 @@ export default {
       tmName.value = "";
       tmContent.value = "";
       tmTags.value = "";
+      showTemplateForm.value = true;
+    }
+
+    function editTemplateRow(t) {
+      selectTemplate(t);
+      showTemplateForm.value = true;
+    }
+
+    function cancelTemplateForm() {
+      showTemplateForm.value = false;
     }
 
     async function saveTemplate() {
@@ -208,23 +219,26 @@ export default {
         } else {
           const t = await store.createNoteTemplate(tmName.value.trim(), tmContent.value, tags);
           selectTemplate(t);
+          store.showNotice("Template created");
         }
+        showTemplateForm.value = false;
+      } catch (err) {
+        store.showNotice("Couldn't save template", "error");
       } finally {
         tmSaving.value = false;
       }
     }
 
-    async function deleteTemplate() {
-      if (!store.viewingTemplate) return;
-      if (confirm(`Delete template "${store.viewingTemplate.name}"?`)) {
-        await store.deleteNoteTemplate(store.viewingTemplate.id);
-        startNewTemplate();
+    async function deleteTemplateRow(t) {
+      if (confirm(`Delete template "${t.name}"?`)) {
+        await store.deleteNoteTemplate(t.id);
       }
     }
 
     function closeTemplateManage() {
       store.templateManageOpen = false;
       store.viewingTemplate = null;
+      showTemplateForm.value = false;
     }
 
     return {
@@ -235,8 +249,8 @@ export default {
       toggleNewNote, saveNewNote,
       editingNote, editNoteTitle, editNoteContent, editNoteTags, editNoteColor, editNotePreview, editNoteHelp, savingNoteEdit,
       openNote, closeNote, startEditNote, cancelEditNote, saveNoteEdit, removeNote,
-      tmName, tmContent, tmTags, tmSaving,
-      selectTemplate, startNewTemplate, saveTemplate, deleteTemplate, closeTemplateManage,
+      showTemplateForm, tmName, tmContent, tmTags, tmSaving,
+      startNewTemplate, editTemplateRow, cancelTemplateForm, saveTemplate, deleteTemplateRow, closeTemplateManage,
     };
   },
   template: `
@@ -247,26 +261,33 @@ export default {
           <h2>Template Manage</h2>
           <button class="icon-btn" title="Back to notes" @click="closeTemplateManage" v-html="icons.close"></button>
         </div>
-        <div class="template-manage-body">
-          <div class="template-manage-form">
-            <input type="text" v-model="tmName" class="note-editor-title-input" placeholder="Template name" />
-            <input type="text" v-model="tmTags" class="note-editor-title-input" placeholder="Tags (comma separated)" />
-            <textarea v-model="tmContent" class="note-editor-textarea" rows="12" placeholder="Template content (Markdown)…"></textarea>
-            <div class="drawer-actions">
-              <button class="btn" :disabled="tmSaving || !tmName.trim()" @click="saveTemplate">
-                <span v-if="tmSaving" class="spinner"></span>{{ tmSaving ? ' Saving…' : (store.viewingTemplate ? 'Save' : 'Create template') }}
-              </button>
-              <button v-if="store.viewingTemplate" class="btn secondary" :disabled="tmSaving" @click="deleteTemplate">Delete</button>
-            </div>
-          </div>
+
+        <template v-if="!showTemplateForm">
           <div class="template-manage-list">
-            <button class="icon-btn new-item-btn" title="New template" @click="startNewTemplate" v-html="icons.plus"></button>
-            <div v-for="t in store.noteTemplates" :key="t.id" class="session-item"
-                 :class="{active: store.viewingTemplate && store.viewingTemplate.id === t.id}"
-                 @click="selectTemplate(t)">
+            <div v-for="t in store.noteTemplates" :key="t.id" class="session-item">
               <span class="session-title">{{ t.name }}</span>
+              <span class="session-actions">
+                <button class="mini-icon-btn" title="Edit" @click="editTemplateRow(t)" v-html="icons.edit"></button>
+                <button class="mini-icon-btn" title="Delete" @click="deleteTemplateRow(t)" v-html="icons.trash"></button>
+              </span>
             </div>
             <div v-if="!store.noteTemplates.length" class="empty-state">No templates yet</div>
+          </div>
+          <button class="icon-btn new-item-btn" title="New template" @click="startNewTemplate" v-html="icons.plus"></button>
+        </template>
+
+        <div v-else class="template-manage-form">
+          <input type="text" v-model="tmName" class="note-editor-title-input" placeholder="Template name" />
+          <div class="row" style="gap:8px; align-items:center; margin-bottom:8px;">
+            <input type="text" v-model="tmTags" class="note-editor-title-input" style="flex:1; margin-bottom:0;" placeholder="Tags (comma separated)" />
+            <TagPicker v-model="tmTags" :options="store.noteTags" />
+          </div>
+          <textarea v-model="tmContent" class="note-editor-textarea" rows="12" placeholder="Template content (Markdown)…"></textarea>
+          <div class="drawer-actions">
+            <button class="btn" :disabled="tmSaving || !tmName.trim()" @click="saveTemplate">
+              <span v-if="tmSaving" class="spinner"></span>{{ tmSaving ? ' Saving…' : (store.viewingTemplate ? 'Save' : 'Create template') }}
+            </button>
+            <button class="btn secondary" :disabled="tmSaving" @click="cancelTemplateForm">Cancel</button>
           </div>
         </div>
       </div>

@@ -74,14 +74,12 @@ export const store = reactive({
   viewingNote: null,
   loadingNoteView: false,
   noteTemplates: [],
-  // Which template the standalone Notes page's Template Manage screen has
-  // selected for editing (or null when the form is blank / creating a new
-  // one) - set directly from noteTemplates, no fetch needed since the full
-  // object (incl. content/tags) is already loaded there.
+  // Notes 頁 Template Manage 畫面目前選取要編輯的 template(null 代表表單是空的、
+  // 準備新增)- 直接從 noteTemplates 取,不用另外 fetch,因為完整內容(含 content/tags)
+  // 早就載入了。
   viewingTemplate: null,
-  // Whether the Notes page's main panel is showing the Template Manage
-  // screen (see Sidebar.js's "Template Manage" button) instead of the
-  // regular notes list.
+  // Notes 頁主畫面是否正顯示 Template Manage 畫面(見 Sidebar.js 的「Template Manage」
+  // 按鈕),而不是一般的筆記列表。
   templateManageOpen: false,
   noteTags: [],
   allNotes: [], // standalone Notes page's full list (see loadAllNotes)
@@ -599,6 +597,20 @@ export const store = reactive({
     this.theme = this.theme === "dark" ? "light" : "dark";
     localStorage.setItem("theme", this.theme);
     document.documentElement.setAttribute("data-theme", this.theme);
+  },
+
+  // --- 頂部通知框(3秒後自動消失,見 Notice.js)。之後所有「建立」的動作
+  // 成功或失敗都要呼叫這個,不只 Notes 的 Template Manage。 ---
+
+  notice: null, // { type: "success" | "error", message } | null
+  _noticeTimer: null,
+
+  showNotice(message, type = "success") {
+    this.notice = { type, message };
+    clearTimeout(this._noticeTimer);
+    this._noticeTimer = setTimeout(() => {
+      this.notice = null;
+    }, 3000);
   },
 
   // --- Login (no auto-logout - see AuthToken in backend/app/models/auth.py) ---

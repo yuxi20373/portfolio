@@ -85,6 +85,60 @@ textarea {
   height: 100dvh;
 }
 
+/* 頂部通知框(見 Notice.js / store.showNotice)- 細長的膠囊形狀,不論在哪一頁
+   都固定在畫面上方。3秒的存活時間是 store.showNotice 的 setTimeout 控制的,
+   這個動畫只是讓它在那段時間內平滑淡入淡出,而不是突然彈出/消失。 */
+.notice-toast {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  animation: notice-fade 3s ease forwards;
+}
+
+.notice-toast-icon {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: flex;
+}
+
+.notice-toast-icon img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.notice-success .notice-toast-icon {
+  color: #2E8B57;
+}
+
+.notice-error .notice-toast-icon {
+  color: var(--accent);
+}
+
+@keyframes notice-fade {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* ---------------- Login ---------------- */
 
 .login-screen {
@@ -1137,10 +1191,9 @@ textarea {
   color: #fff;
 }
 
-/* Template Manage screen (see Sidebar.js's "Template Manage" button) -
-   takes over the whole Notes main panel: a big heading up top, then a
-   two-column body with the edit/create form on the left and the pick list
-   on the right. */
+/* Template Manage 畫面(見 Sidebar.js 的「Template Manage」按鈕)- 佔滿整個
+   Notes 主畫面:上方一個大標題,接著是純清單(每列自己有 Edit/Delete,下面
+   一個「+」新增)或者,點了「+」/Edit 之後,換成名稱/tags/內容的表單。 */
 .template-manage-header {
   margin-bottom: 18px;
 }
@@ -1150,22 +1203,13 @@ textarea {
   margin: 0;
 }
 
-.template-manage-body {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
+.template-manage-list {
+  max-width: 480px;
+  margin-bottom: 4px;
 }
 
 .template-manage-form {
-  flex: 1;
-  min-width: 0;
-}
-
-.template-manage-list {
-  width: 220px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
+  max-width: 480px;
 }
 
 .wiki-toolbar {
