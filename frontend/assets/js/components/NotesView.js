@@ -244,9 +244,25 @@ export default {
       }
     }
 
+    // --- Unified "+" (top-right) - choose whether to add a note or a template ---
+    const showAddMenu = ref(false);
+
+    function pickAddNote() {
+      showAddMenu.value = false;
+      tab.value = "notes";
+      if (!showNewNote.value) toggleNewNote();
+    }
+
+    function pickAddTemplate() {
+      showAddMenu.value = false;
+      tab.value = "templates";
+      if (!showNewTemplate.value) toggleNewTemplate();
+    }
+
     return {
       store, icons, renderMarkdown, MARKDOWN_HELP,
       tab, sortMode, pickTagFilter, allNotesByTag, newTagName, savingTag, addTag, removeTag,
+      showAddMenu, pickAddNote, pickAddTemplate,
       fmtDateShort, fmtDateLabel,
       showNewNote, newNoteTitle, newNoteContent, newNoteTags, newNoteColor, savingNewNote,
       toggleNewNote, saveNewNote,
@@ -260,17 +276,22 @@ export default {
   },
   template: `
   <div class="main-panel notes-panel">
-    <div class="wiki-toolbar">
-      <button class="btn secondary" :class="{active: tab === 'notes'}" @click="tab = 'notes'">Notes</button>
-      <button class="btn secondary" :class="{active: tab === 'templates'}" @click="tab = 'templates'">Templates</button>
+    <div class="wiki-toolbar row between">
+      <div class="row" style="gap:10px;">
+        <button class="btn secondary" :class="{active: tab === 'notes'}" @click="tab = 'notes'">Notes</button>
+        <button class="btn secondary" :class="{active: tab === 'templates'}" @click="tab = 'templates'">Templates</button>
+      </div>
+      <div class="notes-add-menu-wrap">
+        <button class="icon-btn" title="Add" @click="showAddMenu = !showAddMenu" v-html="icons.plus"></button>
+        <div v-if="showAddMenu" class="notes-add-menu">
+          <div class="notes-add-menu-item" @click="pickAddNote">Add note</div>
+          <div class="notes-add-menu-item" @click="pickAddTemplate">Add template</div>
+        </div>
+      </div>
     </div>
 
     <template v-if="tab === 'notes'">
       <div class="row" style="gap:10px; margin-bottom:10px; flex-wrap:wrap;">
-        <div class="new-chat-row" style="margin:0;" @click="toggleNewNote">
-          <span class="icon-btn" v-html="icons.plus"></span>
-          <span class="new-chat-label">New note</span>
-        </div>
         <span class="notes-sort-toggle">
           <button class="btn secondary" :class="{active: sortMode === 'date'}" @click="sortMode = 'date'">By Date</button>
           <button class="btn secondary" :class="{active: sortMode === 'tag'}" @click="sortMode = 'tag'">By Tag</button>
@@ -327,11 +348,6 @@ export default {
     </template>
 
     <template v-else-if="tab === 'templates'">
-      <div class="new-chat-row" @click="toggleNewTemplate">
-        <span class="icon-btn" v-html="icons.plus"></span>
-        <span class="new-chat-label">New template</span>
-      </div>
-
       <div v-if="showNewTemplate" class="note-editor">
         <input type="text" v-model="newTemplateName" class="note-editor-title-input" placeholder="Template name" />
         <input type="text" v-model="newTemplateTags" class="note-editor-title-input" placeholder="Tags applied to every note made from this template (comma separated)" />

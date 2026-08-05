@@ -35,7 +35,7 @@ const App = {
     // cornerSrc's :src changes on every view switch (unlike the logout
     // button's static image) - if an earlier view's image 404'd and got
     // hidden, undo that once a later view's image loads fine, same as
-    // HomeView.js's light/dark toggle.
+    // the light/dark toggle button below.
     function onCornerImgLoad(e) {
       e.target.style.display = "";
     }
@@ -80,6 +80,13 @@ const App = {
       <span class="home-float-inner">
         <span class="home-float-fallback" v-html="icons.logout"></span>
         <img src="assets/images/logout.png" alt="" @error="onCornerImgError" />
+      </span>
+    </button>
+
+    <button class="home-float corner-theme-toggle" title="Toggle light / dark mode" @click="store.toggleTheme()">
+      <span class="home-float-inner">
+        <span class="home-float-fallback" v-html="store.theme === 'dark' ? icons.sun : icons.moon"></span>
+        <img :src="store.theme === 'dark' ? 'assets/images/dark.png' : 'assets/images/light.png'" alt="" @error="onCornerImgError" @load="onCornerImgLoad" />
       </span>
     </button>
   </div>

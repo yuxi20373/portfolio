@@ -36,6 +36,9 @@ export default {
     function goChat() {
       store.view = "chat";
     }
+    function goNotes() {
+      store.view = "notes";
+    }
 
     // Graceful fallback: if a PNG hasn't been dropped into assets/images/
     // yet, just hide the broken <img> so the SVG icon underneath shows
@@ -43,9 +46,9 @@ export default {
     function onImgError(e) {
       e.target.style.display = "none";
     }
-    // The light/dark toggle's :src swaps between two files on click (see
-    // template below) - if one of the two was hidden by onImgError, undo
-    // that once the OTHER one loads fine, or it'd stay hidden forever.
+    // The sticker images' :src swaps reactively with theme (see stickerSrc
+    // below) - if one variant was hidden by onImgError, undo that once a
+    // different variant loads fine, or it'd stay hidden forever.
     function onImgLoad(e) {
       e.target.style.display = "";
     }
@@ -143,6 +146,7 @@ export default {
       goCalendar,
       goNews,
       goChat,
+      goNotes,
       onImgError,
       onImgLoad,
       onHeroError,
@@ -171,10 +175,10 @@ export default {
              @error="onImgError" @load="onImgLoad" />
       </span>
 
-      <button class="home-float home-float-light" title="Toggle light / dark mode" @click="store.toggleTheme()">
+      <button class="home-float home-float-notes" title="Open your notes" @click="goNotes">
         <span class="home-float-inner">
-          <span class="home-float-fallback" v-html="store.theme === 'dark' ? icons.sun : icons.moon"></span>
-          <img :src="store.theme === 'dark' ? 'assets/images/dark.png' : 'assets/images/light.png'" alt="" @error="onImgError" @load="onImgLoad" />
+          <span class="home-float-fallback" v-html="icons.notes"></span>
+          <img src="assets/images/icon-notes.png" alt="" @error="onImgError" />
         </span>
       </button>
 

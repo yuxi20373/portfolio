@@ -241,21 +241,21 @@ export default {
         <button v-if="store.searchQuery" class="clear-search" @click="store.clearSearch()">×</button>
       </div>
 
+      <div class="session-item favorites-row" :class="{active: store.sessionFavoritesOnly}"
+           @click="store.sessionFavoritesOnly = !store.sessionFavoritesOnly">
+        <span class="favorites-row-icon">
+          <span v-html="icons.bookmarkFilled"></span>
+          <img src="assets/images/star.png" alt="" @error="onIconError" />
+        </span>
+        <span class="session-title favorites-row-label">Favorites</span>
+      </div>
+
       <div class="new-chat-row" @click="store.newSession()">
         <span class="icon-btn" v-html="icons.plus"></span>
         <span class="new-chat-label">New conversation</span>
       </div>
 
       <div class="session-list">
-        <div class="session-item favorites-row" :class="{active: store.sessionFavoritesOnly}"
-             @click="store.sessionFavoritesOnly = !store.sessionFavoritesOnly">
-          <span class="favorites-row-icon">
-            <span v-html="icons.bookmarkFilled"></span>
-            <img src="assets/images/star.png" alt="" @error="onIconError" />
-          </span>
-          <span class="session-title">Favorites</span>
-        </div>
-
         <div v-if="store.searching" class="hint">Searching…</div>
         <div v-for="s in store.visibleSessions" :key="s.id"
              class="session-item" :class="{active: s.id === store.currentSessionId}">
@@ -290,21 +290,21 @@ export default {
         <button v-if="store.wikiSearchQuery" class="clear-search" @click="store.wikiSearchQuery = ''">×</button>
       </div>
 
+      <div class="session-item favorites-row" :class="{active: store.wikiFavoritesOnly}"
+           @click="store.wikiFavoritesOnly = !store.wikiFavoritesOnly">
+        <span class="favorites-row-icon">
+          <span v-html="icons.bookmarkFilled"></span>
+          <img src="assets/images/star.png" alt="" @error="onIconError" />
+        </span>
+        <span class="session-title favorites-row-label">Favorites</span>
+      </div>
+
       <div class="new-chat-row" @click="promptNewFolder">
         <span class="icon-btn" v-html="icons.folder"></span>
         <span class="new-chat-label">New folder</span>
       </div>
 
       <div class="wiki-list">
-        <div class="session-item favorites-row" :class="{active: store.wikiFavoritesOnly}"
-             @click="store.wikiFavoritesOnly = !store.wikiFavoritesOnly">
-          <span class="favorites-row-icon">
-            <span v-html="icons.bookmarkFilled"></span>
-            <img src="assets/images/star.png" alt="" @error="onIconError" />
-          </span>
-          <span class="session-title">Favorites</span>
-        </div>
-
         <div v-for="group in wikiGroups" :key="group.key" class="wiki-group">
           <div class="wiki-group-header" @click="toggleGroup(group.key)">
             <span class="wiki-group-chevron" :class="{collapsed: groupCollapsed(group.key)}">▾</span>
@@ -379,7 +379,7 @@ export default {
             <span v-html="icons.bookmarkFilled"></span>
             <img src="assets/images/star.png" alt="" @error="onIconError" />
           </span>
-          <span class="session-title">Favorites</span>
+          <span class="session-title favorites-row-label">Favorites</span>
         </div>
 
         <div v-for="s in sortedNewsSources" :key="s.key"
@@ -405,7 +405,7 @@ export default {
             <span v-html="icons.bookmarkFilled"></span>
             <img src="assets/images/star.png" alt="" @error="onIconError" />
           </span>
-          <span class="session-title">Favorites</span>
+          <span class="session-title favorites-row-label">Favorites</span>
         </div>
 
         <template v-if="notesFavoritesOpen">

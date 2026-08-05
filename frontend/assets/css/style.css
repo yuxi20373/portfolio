@@ -209,6 +209,19 @@ body {
   animation: none;
 }
 
+/* Light/dark toggle - used to live inside HomeView's hero, now a global
+   fixed button (same .home-float reuse as .corner-logout above) so it's
+   reachable from every page, not just home. */
+.corner-theme-toggle {
+  position: fixed;
+  right: 14px;
+  top: 14px;
+  z-index: 6;
+  width: 52px;
+  height: 52px;
+  animation: none;
+}
+
 /* Pure PNG, no button chrome behind it - without this, .home-float-fallback's
    white circle/border/shadow shows through any transparent area of the PNG
    on top of it (the fallback SVG still works if the PNG 404s, just without
@@ -461,6 +474,11 @@ body {
   width: calc(100% - 6px);
   height: calc(100% - 6px);
   object-fit: contain;
+}
+
+.favorites-row-label {
+  font-family: "Crafty Girls", cursive;
+  font-size: 16px;
 }
 
 /* Quick scratchpad checklist, Notes page sidebar (see Sidebar.js's 'notes'
@@ -1152,7 +1170,8 @@ body {
 
 .search-panel-label {
   display: block;
-  font-size: 12px;
+  font-family: "Genos", sans-serif;
+  font-size: 14px;
   color: var(--text-muted);
   margin: 8px 0 4px;
 }
@@ -1284,6 +1303,35 @@ body {
 
 .notes-tag-manage > span {
   cursor: pointer;
+}
+
+.notes-add-menu-wrap {
+  position: relative;
+}
+
+.notes-add-menu {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  min-width: 140px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+}
+
+.notes-add-menu-item {
+  padding: 7px 10px;
+  border-radius: 5px;
+  font-size: 13.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.notes-add-menu-item:hover {
+  background: var(--active-item-bg);
 }
 
 .notes-sort-toggle {
@@ -2190,7 +2238,11 @@ select {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* "safe" falls back to start-alignment once content is taller than the
+     viewport, instead of true centering overflowing equally off both the
+     top and bottom edges (which read as "Welcome pinned to the very top,
+     Start chatting pinned to the very bottom" with no padding visible). */
+  justify-content: safe center;
   gap: 36px;
   padding: 40px 24px;
   overflow-y: auto;
@@ -2301,14 +2353,11 @@ select {
   height: 46%;
 }
 
-.home-float-light {
+.home-float-notes {
   top: -30px;
   left: 50%;
   margin-left: -34px;
-  width: 56px;
-  height: 56px;
-  animation: none;
-  /* the toggle reads more like a button when it isn't bobbing */
+  animation-delay: .45s;
 }
 
 .home-float-wiki {
@@ -2519,6 +2568,13 @@ select {
     bottom: 78px; /* clears .chat-input's send button, pinned to the same corner */
   }
 
+  .corner-theme-toggle {
+    width: 44px;
+    height: 44px;
+    right: 8px;
+    top: 8px;
+  }
+
   .mobile-menu-btn {
     display: flex;
   }
@@ -2609,11 +2665,9 @@ select {
     height: 52px;
   }
 
-  .home-float-light {
-    width: 42px;
-    height: 42px;
+  .home-float-notes {
     top: -20px;
-    margin-left: -21px;
+    margin-left: -26px;
   }
 
   .home-float-wiki {
