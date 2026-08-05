@@ -138,8 +138,10 @@ export default {
   template: `
   <div class="main-panel wiki-panel">
     <div class="wiki-toolbar">
-      <button class="btn secondary" @click="showSearchBox = !showSearchBox">Search</button>
-      <img class="wiki-search-icon" src="assets/images/icon-search.png" alt="" @error="onIconError" />
+      <button class="btn secondary wiki-search-btn" @click="showSearchBox = !showSearchBox">
+        <img class="wiki-search-icon" src="assets/images/icon-search.png" alt="" @error="onIconError" />
+        Search
+      </button>
       <template v-if="store.currentWikiEntry && !editing">
         <button class="btn secondary" @click="startEdit">Edit</button>
         <button class="btn secondary" @click="showAdjustDrawer = true">Adjust</button>

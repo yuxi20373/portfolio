@@ -75,6 +75,7 @@ export default {
     });
 
     async function refresh() {
+      store.calendarMonth = month.value;
       const res = await api.get(`/api/calendar?year=${year.value}&month=${month.value}`);
       counts.value = res.counts || {};
       monthNotes.value = res.notes || {};
@@ -229,20 +230,6 @@ export default {
 
     const weatherHasData = computed(() => !!weather.value && weather.value.will_rain !== null);
 
-    // One decorative image per calendar month (01-12), cycling as the user
-    // flips through prevMonth/nextMonth - sits in the small gap right next
-    // to the month switcher.
-    const monthIconSrc = computed(() => `assets/images/month-${String(month.value).padStart(2, "0")}.png`);
-    function onMonthIconError(e) {
-      e.target.style.display = "none";
-    }
-    // monthIconSrc changes every time the month flips - undo a previous
-    // month's 404 hide once a later month's image loads fine, same as
-    // HomeView.js's light/dark toggle.
-    function onMonthIconLoad(e) {
-      e.target.style.display = "";
-    }
-
     onMounted(async () => {
       await refresh();
       if (jumpDate) {
@@ -257,7 +244,6 @@ export default {
       year, month, counts, monthNotes, rainDays, cells,
       selectedDate, daySessions, dayWikiEntries, dayNotes,
       weather, weatherLoading, weatherHasData,
-      monthIconSrc, onMonthIconError, onMonthIconLoad,
       showAddNote, newNoteTitle, newNoteContent, newNoteTags, newNotePreview, newNoteHelp, savingNote,
       newNoteTemplateId, applyNoteTemplate,
       editingNote, editNoteTitle, editNoteContent, editNoteTags, editNotePreview, editNoteHelp, savingNoteEdit,
@@ -275,7 +261,6 @@ export default {
         <button class="btn secondary" @click="prevMonth">‹</button>
         <h2>{{ year }}-{{ String(month).padStart(2,'0') }}</h2>
         <button class="btn secondary" @click="nextMonth">›</button>
-        <img class="month-icon" :src="monthIconSrc" alt="" @error="onMonthIconError" @load="onMonthIconLoad" />
       </div>
 
       <div v-if="selectedDate && (weatherLoading || weatherHasData)" class="weather-widget" :title="weather && weather.precipitation_probability != null ? 'Taichung · ' + weather.precipitation_probability + '% chance of rain' : 'Taichung'">
@@ -364,20 +349,10 @@ export default {
          .drawer-panel's mobile override in style.css): plain view, edit,
          or delete. viewingNote lives in store.js so Sidebar.js's calendar
          Favorites list can open the same drawer. -->
-    <DrawerShell v-if="store.loadingNoteView || store.viewingNote" title="Note" @close="closeNote">
+    <DrawerShell v-if="store.loadingNoteView || store.viewingNote" title="Note" wide @close="closeNote">
       <div v-if="store.loadingNoteView" class="loading-row"><span class="spinner"></span> Loading…</div>
 
       <template v-else-if="store.viewingNote">
-        <div v-if="!editingNote" class="row" style="gap:8px; margin-bottom:16px;">
-          <button class="btn secondary" @click="startEditNote">Edit</button>
-          <button class="icon-btn" :class="{active: store.viewingNote.is_favorited}" title="Favorite"
-                  @click="store.toggleNoteFavorite(store.viewingNote.id)"
-                  v-html="store.viewingNote.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
-          <button class="btn danger" @click="removeNote">
-            <span v-html="icons.trash"></span> Delete
-          </button>
-        </div>
-
         <div v-if="editingNote" class="note-editor">
           <input type="text" v-model="editNoteTitle" class="note-editor-title-input" placeholder="Note title" />
           <input type="text" v-model="editNoteTags" class="note-editor-title-input" placeholder="Tags (comma separated)" />
@@ -401,8 +376,15 @@ export default {
         <div v-else class="note-detail">
           <div class="note-detail-header">
             <h2>{{ store.viewingNote.title }}</h2>
-            <span class="note-detail-date">{{ fmtDateShort(store.viewingNote.created_at) }}</span>
+            <div class="note-detail-actions">
+              <button class="icon-btn" title="Edit" @click="startEditNote" v-html="icons.edit"></button>
+              <button class="icon-btn" :class="{active: store.viewingNote.is_favorited}" title="Favorite"
+                      @click="store.toggleNoteFavorite(store.viewingNote.id)"
+                      v-html="store.viewingNote.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
+              <button class="icon-btn" title="Delete" @click="removeNote" v-html="icons.trash"></button>
+            </div>
           </div>
+          <div class="note-detail-date">{{ fmtDateShort(store.viewingNote.created_at) }}</div>
           <div v-if="store.viewingNote.tags && store.viewingNote.tags.length" class="tag-row">
             <span class="tag" v-for="t in store.viewingNote.tags" :key="t">{{ t }}</span>
           </div>

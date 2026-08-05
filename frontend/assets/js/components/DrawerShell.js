@@ -6,17 +6,21 @@ const MIN_WIDTH = 340;
 export default {
   props: {
     title: { type: String, default: "" },
+    // Starts at ~half the viewport width instead of DEFAULT_WIDTH - used by
+    // the Note drawer (CalendarView.js/NotesView.js); still respects the
+    // same maxWidth()/MIN_WIDTH resize bounds as every other drawer.
+    wide: { type: Boolean, default: false },
   },
   emits: ["close"],
   setup(props, { emit }) {
-    const width = ref(DEFAULT_WIDTH);
-    const resizing = ref(false);
-    let startX = 0;
-    let startWidth = 0;
-
     function maxWidth() {
       return Math.min(window.innerWidth - 80, 900);
     }
+
+    const width = ref(props.wide ? Math.min(window.innerWidth / 2, maxWidth()) : DEFAULT_WIDTH);
+    const resizing = ref(false);
+    let startX = 0;
+    let startWidth = 0;
 
     function onResizeStart(e) {
       resizing.value = true;

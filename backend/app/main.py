@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models  # noqa: F401  (import registers models with Base.metadata)
 from .config import settings
-from .routers import auth, chat, wiki, calendar, search, notes, weather, line, news, models as models_router
+from .routers import auth, chat, wiki, calendar, search, notes, memos, weather, line, news, models as models_router
 from .services.news import news_service
 
 # Schema is owned entirely by Alembic now (backend/alembic/) - there is no
@@ -36,6 +36,7 @@ app.include_router(wiki.router)
 app.include_router(calendar.router)
 app.include_router(search.router)
 app.include_router(notes.router)
+app.include_router(memos.router)
 app.include_router(weather.router)
 app.include_router(line.router)
 app.include_router(news.router)

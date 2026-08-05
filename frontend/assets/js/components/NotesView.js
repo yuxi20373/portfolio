@@ -257,20 +257,10 @@ export default {
     </template>
 
     <!-- Note view/edit drawer - same store.viewingNote the calendar page uses -->
-    <DrawerShell v-if="store.loadingNoteView || store.viewingNote" title="Note" @close="closeNote">
+    <DrawerShell v-if="store.loadingNoteView || store.viewingNote" title="Note" wide @close="closeNote">
       <div v-if="store.loadingNoteView" class="loading-row"><span class="spinner"></span> Loading…</div>
 
       <template v-else-if="store.viewingNote">
-        <div v-if="!editingNote" class="row" style="gap:8px; margin-bottom:16px;">
-          <button class="btn secondary" @click="startEditNote">Edit</button>
-          <button class="icon-btn" :class="{active: store.viewingNote.is_favorited}" title="Favorite"
-                  @click="store.toggleNoteFavorite(store.viewingNote.id)"
-                  v-html="store.viewingNote.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
-          <button class="btn danger" @click="removeNote">
-            <span v-html="icons.trash"></span> Delete
-          </button>
-        </div>
-
         <div v-if="editingNote" class="note-editor">
           <input type="text" v-model="editNoteTitle" class="note-editor-title-input" placeholder="Note title" />
           <input type="text" v-model="editNoteTags" class="note-editor-title-input" placeholder="Tags (comma separated)" />
@@ -294,8 +284,15 @@ export default {
         <div v-else class="note-detail">
           <div class="note-detail-header">
             <h2>{{ store.viewingNote.title }}</h2>
-            <span class="note-detail-date">{{ fmtDateShort(store.viewingNote.created_at) }}</span>
+            <div class="note-detail-actions">
+              <button class="icon-btn" title="Edit" @click="startEditNote" v-html="icons.edit"></button>
+              <button class="icon-btn" :class="{active: store.viewingNote.is_favorited}" title="Favorite"
+                      @click="store.toggleNoteFavorite(store.viewingNote.id)"
+                      v-html="store.viewingNote.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
+              <button class="icon-btn" title="Delete" @click="removeNote" v-html="icons.trash"></button>
+            </div>
           </div>
+          <div class="note-detail-date">{{ fmtDateShort(store.viewingNote.created_at) }}</div>
           <div v-if="store.viewingNote.tags && store.viewingNote.tags.length" class="tag-row">
             <span class="tag" v-for="t in store.viewingNote.tags" :key="t">{{ t }}</span>
           </div>

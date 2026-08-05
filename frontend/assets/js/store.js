@@ -35,6 +35,10 @@ export const store = reactive({
   // Set by the home page's mini calendar (see NoteMiniCalendar.js) to tell
   // CalendarView which date to jump to and select on mount; cleared once consumed.
   pendingCalendarDate: null,
+  // Kept in sync by CalendarView.js so app.js's cornerSrc can show that
+  // month's decorative image (month-01.png..month-12.png) as the calendar
+  // page's corner mascot instead of a static corner-calendar.png.
+  calendarMonth: null,
   searchQuery: "",
   searchResultIds: null, // null = no active search
   searching: false,
@@ -56,6 +60,7 @@ export const store = reactive({
   noteTags: [],
   allNotes: [], // standalone Notes page's full list (see loadAllNotes)
   notesTagFilter: null, // tag name | null - standalone Notes page's filter
+  memoItems: [], // quick scratchpad checklist, shown in the Notes page's sidebar
 
   // news
   newsSources: [], // [{key, name, enabled, pinned}, ...]
@@ -504,6 +509,30 @@ export const store = reactive({
     await this.loadNoteTags();
   },
 
+  // --- Memo checklist (Notes page sidebar) ---
+
+  async loadMemoItems() {
+    this.memoItems = await api.get("/api/memos");
+  },
+
+  async createMemoItem(text) {
+    const item = await api.post("/api/memos", { text });
+    this.memoItems.push(item);
+  },
+
+  async toggleMemoItem(id) {
+    const m = this.memoItems.find((x) => x.id === id);
+    if (!m) return;
+    const next = !m.done;
+    await api.patch(`/api/memos/${id}`, { done: next });
+    m.done = next;
+  },
+
+  async deleteMemoItem(id) {
+    await api.del(`/api/memos/${id}`);
+    this.memoItems = this.memoItems.filter((m) => m.id !== id);
+  },
+
   // --- Mobile sidebar drawer ---
 
   toggleSidebar() {
@@ -569,6 +598,7 @@ export const store = reactive({
     this.noteTags = [];
     this.allNotes = [];
     this.notesTagFilter = null;
+    this.memoItems = [];
   },
 });
 

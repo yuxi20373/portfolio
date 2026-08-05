@@ -68,7 +68,14 @@ export default {
     const weather = ref(null);
     const weatherRevealed = ref(false);
 
+    // Repeated clicks toggle: reveal the weather hero, then click again to
+    // go back to the default (quokka) hero - doesn't refetch once weather
+    // has already been loaded once.
     async function onWeatherClick() {
+      if (weatherRevealed.value) {
+        weatherRevealed.value = false;
+        return;
+      }
       if (!weather.value) {
         const d = new Date();
         const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -86,9 +93,12 @@ export default {
         !isRaining.value &&
         [0, 1].includes(weather.value.weather_code),
     );
+    // Weather states win regardless of theme; otherwise the default (quokka)
+    // hero has its own dark-mode variant, same idea as the stickers.
     const heroSrc = computed(() => {
       if (isRaining.value) return "assets/images/rainy.png";
       if (isSunny.value) return "assets/images/sunny.png";
+      if (store.theme === "dark") return "assets/images/night.png";
       return "assets/images/hero.png";
     });
 

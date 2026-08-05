@@ -19,7 +19,27 @@ export default {
 
     onMounted(() => {
       store.loadWikiFolders();
+      store.loadMemoItems();
     });
+
+    // --- Memo checklist (Notes page sidebar) ---
+    const addingMemo = ref(false);
+    const newMemoText = ref("");
+
+    function startAddMemo() {
+      addingMemo.value = true;
+      newMemoText.value = "";
+    }
+
+    async function confirmAddMemo() {
+      const text = newMemoText.value.trim();
+      addingMemo.value = false;
+      if (text) await store.createMemoItem(text);
+    }
+
+    function cancelAddMemo() {
+      addingMemo.value = false;
+    }
 
     // Same graceful-fallback pattern as HomeView.js's decorative images -
     // if the PNG isn't there yet, just hide the broken <img>.
@@ -196,6 +216,11 @@ export default {
       notesFavoritesOpen,
       toggleNotesFavorites,
       fmtDateLabel,
+      addingMemo,
+      newMemoText,
+      startAddMemo,
+      confirmAddMemo,
+      cancelAddMemo,
     };
   },
   template: `
@@ -326,6 +351,29 @@ export default {
       </div>
     </template>
 
+    <template v-else-if="store.view === 'notes'">
+      <div class="memo-box">
+        <div class="memo-box-title">Memo</div>
+
+        <div v-for="m in store.memoItems" :key="m.id" class="memo-item">
+          <label class="memo-checkbox">
+            <input type="checkbox" :checked="m.done" @change="store.toggleMemoItem(m.id)" />
+            <span class="memo-checkbox-box"></span>
+          </label>
+          <span class="memo-text" :class="{done: m.done}">{{ m.text }}</span>
+          <button class="mini-icon-btn" title="Delete" @click="store.deleteMemoItem(m.id)">×</button>
+        </div>
+
+        <div v-if="!addingMemo" class="new-chat-row memo-add-row" @click="startAddMemo">
+          <span class="icon-btn" v-html="icons.plus"></span>
+          <span class="new-chat-label">Add item</span>
+        </div>
+        <input v-else type="text" v-model="newMemoText" class="session-rename-input memo-input"
+               placeholder="New memo…" autofocus
+               @keydown.enter.prevent="confirmAddMemo" @keydown.esc.prevent="cancelAddMemo" @blur="confirmAddMemo" />
+      </div>
+    </template>
+
     <template v-else-if="store.view === 'news'">
       <div class="session-list">
         <div class="session-item favorites-row" :class="{active: store.newsSelectedSource === '__favorites__'}"
@@ -376,6 +424,7 @@ export default {
     </template>
 
     <template v-else-if="store.view === 'home'">
+      <div class="home-sidebar-spacer"></div>
       <NoteMiniCalendar />
     </template>
   </aside>

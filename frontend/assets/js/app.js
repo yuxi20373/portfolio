@@ -41,10 +41,17 @@ const App = {
     }
 
     // One corner image per view (store.view is "home"/"chat"/"wiki"/
-    // "calendar"/"news") instead of a single shared corner.png - naming
-    // the files corner-<view>.png means a new view automatically gets a
-    // slot here with no code change.
-    const cornerSrc = computed(() => `assets/images/corner-${store.view}.png`);
+    // "calendar"/"notes"/"news") instead of a single shared corner.png -
+    // naming the files corner-<view>.png means a new view automatically
+    // gets a slot here with no code change. Calendar is the one exception:
+    // it cycles through month-01.png..month-12.png (see store.calendarMonth,
+    // kept in sync by CalendarView.js) instead of a static corner-calendar.png.
+    const cornerSrc = computed(() => {
+      if (store.view === "calendar" && store.calendarMonth) {
+        return `assets/images/month-${String(store.calendarMonth).padStart(2, "0")}.png`;
+      }
+      return `assets/images/corner-${store.view}.png`;
+    });
 
     // Quick logout from anywhere, without opening the sidebar drawer first
     // (same confirm() the sidebar's own logout button uses).

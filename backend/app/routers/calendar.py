@@ -48,8 +48,18 @@ def calendar_month(
         d = dt.strftime("%Y-%m-%d")
         notes_by_day.setdefault(d, []).append(title)
 
+    # Capped to 7 days out - querying Open-Meteo for a date range spanning
+    # a whole month (up to ~30 days of future forecast) was slow/unreliable
+    # enough to make the calendar page hang. Past days are unaffected (the
+    # archive endpoint covers those); a month entirely beyond the cutoff
+    # (browsing further into the future) just gets no rain highlighting.
     last_day_of_month = end - timedelta(days=1)
-    rain_days = get_rain_days_for_range(start.strftime("%Y-%m-%d"), last_day_of_month.strftime("%Y-%m-%d"))
+    weather_cutoff = datetime.utcnow() + timedelta(days=7)
+    weather_end = min(last_day_of_month, weather_cutoff)
+
+    rain_days = set()
+    if start <= weather_end:
+        rain_days = get_rain_days_for_range(start.strftime("%Y-%m-%d"), weather_end.strftime("%Y-%m-%d"))
 
     return {"counts": counts, "notes": notes_by_day, "rain_days": sorted(rain_days)}
 
