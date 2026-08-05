@@ -146,6 +146,22 @@ export default {
       }
     }
 
+    // Templates: created here (list + creation both live in the drawer per
+    // the standalone Notes page's design), but content/tags are edited in
+    // the main panel once selected - see store.viewingTemplate.
+    async function promptNewTemplate() {
+      const name = prompt("Template name");
+      if (name && name.trim()) {
+        store.viewingTemplate = await store.createNoteTemplate(name.trim(), "", []);
+      }
+    }
+
+    async function removeTemplate(t) {
+      if (confirm(`Delete template "${t.name}"?`)) {
+        await store.deleteNoteTemplate(t.id);
+      }
+    }
+
     async function startFolderRename(group) {
       editingFolderId.value = group.id;
       editingFolderName.value = group.label;
@@ -202,6 +218,8 @@ export default {
       toggleGroup,
       groupCollapsed,
       promptNewFolder,
+      promptNewTemplate,
+      removeTemplate,
       editingFolderId,
       editingFolderName,
       startFolderRename,
@@ -250,10 +268,7 @@ export default {
         <span class="session-title favorites-row-label">Favorites</span>
       </div>
 
-      <div class="new-chat-row" @click="store.newSession()">
-        <span class="icon-btn" v-html="icons.plus"></span>
-        <span class="new-chat-label">New conversation</span>
-      </div>
+      <button class="icon-btn new-item-btn" title="New conversation" @click="store.newSession()" v-html="icons.plus"></button>
 
       <div class="session-list">
         <div v-if="store.searching" class="hint">Searching…</div>
@@ -299,10 +314,7 @@ export default {
         <span class="session-title favorites-row-label">Favorites</span>
       </div>
 
-      <div class="new-chat-row" @click="promptNewFolder">
-        <span class="icon-btn" v-html="icons.folder"></span>
-        <span class="new-chat-label">New folder</span>
-      </div>
+      <button class="icon-btn new-item-btn" title="New folder" @click="promptNewFolder" v-html="icons.plus"></button>
 
       <div class="wiki-list">
         <div v-for="group in wikiGroups" :key="group.key" class="wiki-group">
@@ -344,16 +356,32 @@ export default {
                 </div>
               </span>
             </div>
-            <div v-if="!group.entries.length" class="hint">Empty</div>
           </div>
         </div>
-        <div v-if="!store.wikiEntries.length" class="hint">No entries yet</div>
       </div>
     </template>
 
     <template v-else-if="store.view === 'notes'">
+      <div class="session-list">
+        <div v-for="t in store.noteTemplates" :key="t.id"
+             class="session-item" :class="{active: store.viewingTemplate && store.viewingTemplate.id === t.id}"
+             @click="store.viewingTemplate = t">
+          <span class="session-title">{{ t.name }}</span>
+          <span class="session-actions">
+            <button class="mini-icon-btn" title="Delete" @click.stop="removeTemplate(t)" v-html="icons.trash"></button>
+          </span>
+        </div>
+        <div class="new-chat-row" @click="promptNewTemplate">
+          <span class="icon-btn" v-html="icons.plus"></span>
+          <span class="new-chat-label">New template</span>
+        </div>
+      </div>
+
       <div class="memo-box">
-        <div class="memo-box-title">Memo</div>
+        <div class="memo-box-title row between">
+          <span>Memo</span>
+          <button v-if="!addingMemo" class="icon-btn" title="Add item" @click="startAddMemo" v-html="icons.plus"></button>
+        </div>
 
         <div v-for="m in store.memoItems" :key="m.id" class="memo-item">
           <label class="memo-checkbox">
@@ -364,8 +392,7 @@ export default {
           <button class="mini-icon-btn" title="Delete" @click="store.deleteMemoItem(m.id)">×</button>
         </div>
 
-        <button v-if="!addingMemo" class="icon-btn memo-add-row" title="Add item" @click="startAddMemo" v-html="icons.plus"></button>
-        <input v-else type="text" v-model="newMemoText" class="session-rename-input memo-input"
+        <input v-if="addingMemo" type="text" v-model="newMemoText" class="session-rename-input memo-input"
                placeholder="New memo…" autofocus
                @keydown.enter.prevent="confirmAddMemo" @keydown.esc.prevent="cancelAddMemo" @blur="confirmAddMemo" />
       </div>

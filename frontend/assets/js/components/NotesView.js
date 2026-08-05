@@ -18,10 +18,10 @@ const MARKDOWN_HELP = `
 export default {
   components: { DrawerShell, ColorPicker },
   setup() {
-    const tab = ref("notes"); // "notes" | "templates"
-
-    // --- Notes tab: sort/group mode + tag filter/management (merged in
-    // from what used to be a separate "Tags" tab) ---
+    // No more Notes/Templates tab switcher - this page always defaults to
+    // the all-notes list; templates are listed/created in the sidebar (see
+    // Sidebar.js's 'notes' branch) and, once picked, take over this main
+    // panel via store.viewingTemplate (cleared to fall back to the list).
 
     const sortMode = ref("date"); // "date" | "tag"
 
@@ -97,6 +97,7 @@ export default {
     const savingNewNote = ref(false);
 
     function toggleNewNote() {
+      store.viewingTemplate = null; // the "+" always means "add a note", regardless of what's showing
       showNewNote.value = !showNewNote.value;
       newNoteTitle.value = "";
       newNoteContent.value = "";
@@ -183,118 +184,109 @@ export default {
       }
     }
 
-    // --- Templates tab ---
+    // --- Template viewer/editor - takes over this main panel whenever
+    // store.viewingTemplate is set (from Sidebar.js's template list).
+    // Same view/edit/delete pattern as note-detail above. ---
 
-    const showNewTemplate = ref(false);
-    const newTemplateName = ref("");
-    const newTemplateContent = ref("");
-    const newTemplateTags = ref("");
-    const savingTemplate = ref(false);
-    const editingTemplateId = ref(null);
+    const editingTemplate = ref(false);
     const editTemplateName = ref("");
     const editTemplateContent = ref("");
     const editTemplateTags = ref("");
+    const savingTemplateEdit = ref(false);
 
-    function toggleNewTemplate() {
-      showNewTemplate.value = !showNewTemplate.value;
-      newTemplateName.value = "";
-      newTemplateContent.value = "";
-      newTemplateTags.value = "";
-    }
-
-    async function saveNewTemplate() {
-      if (!newTemplateName.value.trim()) return;
-      savingTemplate.value = true;
-      try {
-        await store.createNoteTemplate(
-          newTemplateName.value.trim(),
-          newTemplateContent.value,
-          newTemplateTags.value.split(",").map((t) => t.trim()).filter(Boolean),
-        );
-        toggleNewTemplate();
-      } finally {
-        savingTemplate.value = false;
-      }
-    }
-
-    function startEditTemplate(t) {
-      editingTemplateId.value = t.id;
-      editTemplateName.value = t.name;
-      editTemplateContent.value = t.content;
-      editTemplateTags.value = (t.tags || []).join(", ");
+    function startEditTemplate() {
+      if (!store.viewingTemplate) return;
+      editTemplateName.value = store.viewingTemplate.name;
+      editTemplateContent.value = store.viewingTemplate.content;
+      editTemplateTags.value = (store.viewingTemplate.tags || []).join(", ");
+      editingTemplate.value = true;
     }
 
     function cancelEditTemplate() {
-      editingTemplateId.value = null;
+      editingTemplate.value = false;
     }
 
     async function saveEditTemplate() {
-      if (!editTemplateName.value.trim()) return;
-      await store.updateNoteTemplate(editingTemplateId.value, {
-        name: editTemplateName.value.trim(),
-        content: editTemplateContent.value,
-        tags: editTemplateTags.value.split(",").map((t) => t.trim()).filter(Boolean),
-      });
-      editingTemplateId.value = null;
-    }
-
-    async function removeTemplate(t) {
-      if (confirm(`Delete template "${t.name}"?`)) {
-        await store.deleteNoteTemplate(t.id);
+      if (!store.viewingTemplate || !editTemplateName.value.trim()) return;
+      savingTemplateEdit.value = true;
+      try {
+        await store.updateNoteTemplate(store.viewingTemplate.id, {
+          name: editTemplateName.value.trim(),
+          content: editTemplateContent.value,
+          tags: editTemplateTags.value.split(",").map((t) => t.trim()).filter(Boolean),
+        });
+        editingTemplate.value = false;
+      } finally {
+        savingTemplateEdit.value = false;
       }
     }
 
-    // --- Unified "+" (top-right) - choose whether to add a note or a template ---
-    const showAddMenu = ref(false);
-
-    function pickAddNote() {
-      showAddMenu.value = false;
-      tab.value = "notes";
-      if (!showNewNote.value) toggleNewNote();
+    async function removeViewingTemplate() {
+      if (!store.viewingTemplate) return;
+      if (confirm(`Delete template "${store.viewingTemplate.name}"?`)) {
+        await store.deleteNoteTemplate(store.viewingTemplate.id);
+        editingTemplate.value = false;
+      }
     }
 
-    function pickAddTemplate() {
-      showAddMenu.value = false;
-      tab.value = "templates";
-      if (!showNewTemplate.value) toggleNewTemplate();
+    function closeTemplateView() {
+      store.viewingTemplate = null;
+      editingTemplate.value = false;
     }
 
     return {
       store, icons, renderMarkdown, MARKDOWN_HELP,
-      tab, sortMode, pickTagFilter, allNotesByTag, newTagName, savingTag, addTag, removeTag,
-      showAddMenu, pickAddNote, pickAddTemplate,
+      sortMode, pickTagFilter, allNotesByTag, newTagName, savingTag, addTag, removeTag,
       fmtDateShort, fmtDateLabel,
       showNewNote, newNoteTitle, newNoteContent, newNoteTags, newNoteColor, savingNewNote,
       toggleNewNote, saveNewNote,
       editingNote, editNoteTitle, editNoteContent, editNoteTags, editNoteColor, editNotePreview, editNoteHelp, savingNoteEdit,
       openNote, closeNote, startEditNote, cancelEditNote, saveNoteEdit, removeNote,
-      showNewTemplate, newTemplateName, newTemplateContent, newTemplateTags, savingTemplate,
-      toggleNewTemplate, saveNewTemplate,
-      editingTemplateId, editTemplateName, editTemplateContent, editTemplateTags,
-      startEditTemplate, cancelEditTemplate, saveEditTemplate, removeTemplate,
+      editingTemplate, editTemplateName, editTemplateContent, editTemplateTags, savingTemplateEdit,
+      startEditTemplate, cancelEditTemplate, saveEditTemplate, removeViewingTemplate, closeTemplateView,
     };
   },
   template: `
   <div class="main-panel notes-panel">
-    <div class="wiki-toolbar row between">
-      <div class="row" style="gap:10px;">
-        <button class="btn secondary" :class="{active: tab === 'notes'}" @click="tab = 'notes'">Notes</button>
-        <button class="btn secondary" :class="{active: tab === 'templates'}" @click="tab = 'templates'">Templates</button>
-      </div>
-      <div class="notes-add-menu-wrap">
-        <button class="icon-btn" title="Add" @click="showAddMenu = !showAddMenu" v-html="icons.plus"></button>
-        <div v-if="showAddMenu" class="notes-add-menu">
-          <div class="notes-add-menu-item" @click="pickAddNote">Add note</div>
-          <div class="notes-add-menu-item" @click="pickAddTemplate">Add template</div>
-        </div>
-      </div>
+    <div class="wiki-toolbar" style="justify-content:flex-end;">
+      <button class="icon-btn" title="New note" @click="toggleNewNote" v-html="icons.plus"></button>
     </div>
 
-    <template v-if="tab === 'notes'">
+    <template v-if="store.viewingTemplate">
+      <div v-if="editingTemplate" class="note-editor">
+        <input type="text" v-model="editTemplateName" class="note-editor-title-input" placeholder="Template name" />
+        <input type="text" v-model="editTemplateTags" class="note-editor-title-input" placeholder="Tags (comma separated)" />
+        <textarea v-model="editTemplateContent" class="note-editor-textarea" rows="10"></textarea>
+        <div class="drawer-actions">
+          <button class="btn" :disabled="savingTemplateEdit || !editTemplateName.trim()" @click="saveEditTemplate">
+            <span v-if="savingTemplateEdit" class="spinner"></span>{{ savingTemplateEdit ? ' Saving…' : 'Save' }}
+          </button>
+          <button class="btn secondary" :disabled="savingTemplateEdit" @click="cancelEditTemplate">Cancel</button>
+        </div>
+      </div>
+
+      <div v-else class="note-detail">
+        <div class="note-detail-header">
+          <h2>{{ store.viewingTemplate.name }}</h2>
+          <div class="note-detail-actions">
+            <button class="icon-btn" title="Edit" @click="startEditTemplate" v-html="icons.edit"></button>
+            <button class="icon-btn" title="Delete" @click="removeViewingTemplate" v-html="icons.trash"></button>
+            <button class="icon-btn" title="Back to notes" @click="closeTemplateView" v-html="icons.close"></button>
+          </div>
+        </div>
+        <div v-if="store.viewingTemplate.tags && store.viewingTemplate.tags.length" class="tag-row">
+          <span class="tag" v-for="t in store.viewingTemplate.tags" :key="t">{{ t }}</span>
+        </div>
+        <hr class="note-divider" />
+        <div class="markdown-body note-editor-preview">{{ store.viewingTemplate.content }}</div>
+      </div>
+    </template>
+
+    <template v-else>
       <div class="row" style="gap:10px; margin-bottom:10px; flex-wrap:wrap;">
         <span class="notes-sort-toggle">
-          <button class="btn secondary" :class="{active: sortMode === 'date'}" @click="sortMode = 'date'">By Date</button>
-          <button class="btn secondary" :class="{active: sortMode === 'tag'}" @click="sortMode = 'tag'">By Tag</button>
+          <button class="icon-btn" title="Sort by date" :class="{active: sortMode === 'date'}" @click="sortMode = 'date'" v-html="icons.calendar"></button>
+          <button class="icon-btn" title="Sort by tag" :class="{active: sortMode === 'tag'}" @click="sortMode = 'tag'" v-html="icons.tag"></button>
         </span>
       </div>
 
@@ -345,43 +337,6 @@ export default {
         </template>
       </template>
       <div v-if="!store.allNotes.length" class="empty-state">No notes yet</div>
-    </template>
-
-    <template v-else-if="tab === 'templates'">
-      <div v-if="showNewTemplate" class="note-editor">
-        <input type="text" v-model="newTemplateName" class="note-editor-title-input" placeholder="Template name" />
-        <input type="text" v-model="newTemplateTags" class="note-editor-title-input" placeholder="Tags applied to every note made from this template (comma separated)" />
-        <textarea v-model="newTemplateContent" class="note-editor-textarea" rows="8" placeholder="Markdown content applied when this template is picked…"></textarea>
-        <button class="btn" :disabled="savingTemplate || !newTemplateName.trim()" @click="saveNewTemplate">
-          <span v-if="savingTemplate" class="spinner"></span>{{ savingTemplate ? ' Saving…' : 'Save template' }}
-        </button>
-      </div>
-
-      <div class="notes-grid">
-        <div v-for="t in store.noteTemplates" :key="t.id" class="card">
-          <template v-if="editingTemplateId === t.id">
-            <input type="text" v-model="editTemplateName" class="note-editor-title-input" placeholder="Template name" />
-            <input type="text" v-model="editTemplateTags" class="note-editor-title-input" placeholder="Tags (comma separated)" />
-            <textarea v-model="editTemplateContent" class="note-editor-textarea" rows="8"></textarea>
-            <div class="drawer-actions">
-              <button class="btn" @click="saveEditTemplate">Save</button>
-              <button class="btn secondary" @click="cancelEditTemplate">Cancel</button>
-            </div>
-          </template>
-          <template v-else>
-            <div class="day-card-title">{{ t.name }}</div>
-            <div v-if="t.tags && t.tags.length" class="tag-row">
-              <span class="tag" v-for="tg in t.tags" :key="tg">{{ tg }}</span>
-            </div>
-            <div class="markdown-body note-editor-preview">{{ t.content }}</div>
-            <div class="row" style="gap:8px; margin-top:10px;">
-              <button class="mini-icon-btn" title="Rename / edit" @click="startEditTemplate(t)" v-html="icons.edit"></button>
-              <button class="mini-icon-btn" title="Delete" @click="removeTemplate(t)" v-html="icons.trash"></button>
-            </div>
-          </template>
-        </div>
-      </div>
-      <div v-if="!store.noteTemplates.length && !showNewTemplate" class="empty-state">No templates yet</div>
     </template>
 
     <!-- Note view/edit drawer - same store.viewingNote the calendar page uses -->

@@ -74,6 +74,11 @@ export const store = reactive({
   viewingNote: null,
   loadingNoteView: false,
   noteTemplates: [],
+  // Which template the standalone Notes page's main panel is showing (or
+  // null for the default all-notes list) - set directly by Sidebar.js's
+  // template list since the full object (incl. content/tags) is already
+  // loaded in noteTemplates, no fetch needed.
+  viewingTemplate: null,
   noteTags: [],
   allNotes: [], // standalone Notes page's full list (see loadAllNotes)
   notesTagFilter: null, // tag name | null - standalone Notes page's filter
@@ -503,18 +508,22 @@ export const store = reactive({
   },
 
   async createNoteTemplate(name, content, tags) {
-    await api.post("/api/notes/templates", { name, content, tags: tags || [] });
+    const t = await api.post("/api/notes/templates", { name, content, tags: tags || [] });
     await this.loadNoteTemplates();
+    return t;
   },
 
   async updateNoteTemplate(id, patch) {
-    await api.patch(`/api/notes/templates/${id}`, patch);
+    const t = await api.patch(`/api/notes/templates/${id}`, patch);
     await this.loadNoteTemplates();
+    if (this.viewingTemplate && this.viewingTemplate.id === id) this.viewingTemplate = t;
+    return t;
   },
 
   async deleteNoteTemplate(id) {
     await api.del(`/api/notes/templates/${id}`);
     await this.loadNoteTemplates();
+    if (this.viewingTemplate && this.viewingTemplate.id === id) this.viewingTemplate = null;
   },
 
   async loadNoteTags() {
@@ -617,6 +626,7 @@ export const store = reactive({
     this.favoritedNotes = [];
     this.viewingNote = null;
     this.noteTemplates = [];
+    this.viewingTemplate = null;
     this.noteTags = [];
     this.allNotes = [];
     this.notesTagFilter = null;
