@@ -47,6 +47,10 @@ class NoteTagCreate(BaseModel):
     name: str
 
 
+class NoteTagUpdate(BaseModel):
+    name: str
+
+
 def _note_dict(n: models.Note):
     return {
         "id": n.id,
@@ -209,6 +213,21 @@ def create_note_tag(
     db.add(t)
     db.commit()
     db.refresh(t)
+    return {"id": t.id, "name": t.name}
+
+
+@router.patch("/tags/{tag_id}")
+def update_note_tag(
+    tag_id: int, payload: NoteTagUpdate, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)
+):
+    t = db.query(models.NoteTag).get(tag_id)
+    if not t or t.user_id != user.id:
+        raise HTTPException(404, "tag not found")
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(400, "name cannot be empty")
+    t.name = name
+    db.commit()
     return {"id": t.id, "name": t.name}
 
 

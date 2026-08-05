@@ -22,7 +22,7 @@ export default {
       store.loadMemoItems();
     });
 
-    // --- Memo checklist (Notes page sidebar) ---
+    // --- Memo checklist(首頁側欄,桌機限定 - 手機版首頁本來就沒有側欄可看)---
     const addingMemo = ref(false);
     const newMemoText = ref("");
 
@@ -235,7 +235,10 @@ export default {
   template: `
   <aside class="sidebar" :class="{open: store.sidebarOpen}">
     <div class="icon-nav">
-      <button class="icon-btn" :class="{active: store.view==='home'}" @click="setView('home')" title="Home" v-html="icons.home"></button>
+      <button class="icon-btn icon-btn-home" :class="{active: store.view==='home'}" @click="setView('home')" title="Home">
+        <span v-html="icons.home"></span>
+        <img src="assets/images/home.png" alt="" @error="onIconError" />
+      </button>
       <button class="icon-btn" :class="{active: store.view==='chat'}" @click="setView('chat')" title="Chat" v-html="icons.chat"></button>
       <button class="icon-btn" :class="{active: store.view==='wiki'}" @click="setView('wiki')" title="Knowledge base" v-html="icons.wiki"></button>
       <button class="icon-btn" :class="{active: store.view==='calendar'}" @click="setView('calendar')" title="Calendar" v-html="icons.calendar"></button>
@@ -359,7 +362,7 @@ export default {
             <span v-html="icons.doc"></span>
             <img src="assets/images/manager.png" alt="" @error="onIconError" />
           </span>
-          <span class="session-title favorites-row-label">Template Manage</span>
+          <span class="session-title favorites-row-label">Manage</span>
         </div>
 
         <div class="session-item favorites-row" :class="{active: notesFavoritesOpen}" @click="toggleNotesFavorites">
@@ -380,26 +383,6 @@ export default {
           </template>
           <div v-if="!store.favoritedNotesByDate.length" class="hint">No favorited notes yet</div>
         </template>
-      </div>
-
-      <div class="memo-box">
-        <div class="memo-box-title row between">
-          <span>Memo</span>
-          <button v-if="!addingMemo" class="icon-btn" title="Add item" @click="startAddMemo" v-html="icons.plus"></button>
-        </div>
-
-        <div v-for="m in store.memoItems" :key="m.id" class="memo-item">
-          <label class="memo-checkbox">
-            <input type="checkbox" :checked="m.done" @change="store.toggleMemoItem(m.id)" />
-            <span class="memo-checkbox-box"></span>
-          </label>
-          <span class="memo-text" :class="{done: m.done}">{{ m.text }}</span>
-          <button class="mini-icon-btn" title="Delete" @click="store.deleteMemoItem(m.id)">×</button>
-        </div>
-
-        <input v-if="addingMemo" type="text" v-model="newMemoText" class="session-rename-input memo-input"
-               placeholder="New memo…" autofocus
-               @keydown.enter.prevent="confirmAddMemo" @keydown.esc.prevent="cancelAddMemo" @blur="confirmAddMemo" />
       </div>
     </template>
 
@@ -454,6 +437,26 @@ export default {
     </template>
 
     <template v-else-if="store.view === 'home'">
+      <div class="memo-box">
+        <div class="memo-box-title row between">
+          <span>Memo</span>
+          <button v-if="!addingMemo" class="icon-btn" title="Add item" @click="startAddMemo" v-html="icons.plus"></button>
+        </div>
+
+        <div v-for="m in store.memoItems" :key="m.id" class="memo-item">
+          <label class="memo-checkbox">
+            <input type="checkbox" :checked="m.done" @change="store.toggleMemoItem(m.id)" />
+            <span class="memo-checkbox-box"></span>
+          </label>
+          <span class="memo-text" :class="{done: m.done}">{{ m.text }}</span>
+          <button class="mini-icon-btn" title="Delete" @click="store.deleteMemoItem(m.id)">×</button>
+        </div>
+
+        <input v-if="addingMemo" type="text" v-model="newMemoText" class="session-rename-input memo-input"
+               placeholder="New memo…" autofocus
+               @keydown.enter.prevent="confirmAddMemo" @keydown.esc.prevent="cancelAddMemo" @blur="confirmAddMemo" />
+      </div>
+
       <div class="home-sidebar-spacer"></div>
       <NoteMiniCalendar />
     </template>

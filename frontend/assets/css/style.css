@@ -334,6 +334,23 @@ textarea {
   height: 18px;
 }
 
+/* icon-nav 的 Home 按鈕改用 home.png,絕對定位疊在按鈕正中央(跟 SVG 備援
+   同樣 18x18 的範圍),不會動到 .icon-btn 本身固定的 38x38 大小 - 所以
+   icon-nav 那排跟側欄排版完全不受影響。 */
+.icon-btn-home {
+  position: relative;
+}
+
+.icon-btn-home img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+}
+
 /* Favorite toggle buttons (wiki/chat/note toolbars) - no background box in
    any state, just the bookmark icon itself (filled = favorited). */
 .icon-btn.favorite-btn,
@@ -1035,6 +1052,7 @@ textarea {
 
 .msg {
   max-width: 70%;
+  width: fit-content;
   margin-bottom: 14px;
   padding: 10px 14px;
   border-radius: 12px;
@@ -1181,21 +1199,60 @@ textarea {
   color: #fff;
 }
 
-/* Template Manage 畫面(見 Sidebar.js 的「Template Manage」按鈕)- 佔滿整個
-   Notes 主畫面:上方一個大標題,接著是純清單(每列自己有 Edit/Delete,下面
-   一個「+」新增)或者,點了「+」/Edit 之後,換成名稱/tags/內容的表單。 */
+/* Manage 畫面(見 Sidebar.js 的「Template Manage」按鈕)- 佔滿整個 Notes
+   主畫面:上方一個大標題,接著是 Template List(小卡片)+ Tag Manage
+   (可改名/刪除的 tag chips)兩個區塊;點了某張卡片的「+」/卡片本身之後,
+   整個畫面換成名稱/tags/內容的表單。 */
 .template-manage-header {
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .template-manage-header h2 {
-  font-size: 22px;
+  font-size: 28px;
   margin: 0;
 }
 
-.template-manage-list {
-  max-width: 480px;
-  margin-bottom: 4px;
+.manage-section {
+  margin-bottom: 28px;
+}
+
+.manage-section-header {
+  margin-bottom: 10px;
+}
+
+.manage-section-header h3 {
+  font-size: 14px;
+  margin: 0;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.manage-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  max-width: 640px;
+}
+
+.manage-card {
+  position: relative;
+  background: var(--sidebar-bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.manage-card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  padding-right: 20px;
+}
+
+.manage-card-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
 }
 
 .template-manage-form {
@@ -1310,6 +1367,37 @@ textarea {
 
 .search-panel .btn {
   margin-top: 12px;
+}
+
+/* 純圖片按鈕(同 .corner-logout 那套「純PNG無底」處理),比原本文字按鈕的
+   總高度(約 37px)稍微高一點。搜圖失敗時整個換成 SVG icon+文字備援
+   (見 WikiView.js 的 searchBtnImgOk),不是疊圖遮蓋那套做法,因為這顆按鈕
+   寬度要跟著圖片原始比例走,疊圖會讓可點擊範圍跟圖片顯示範圍對不齊。 */
+.search-panel .btn.search-submit-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  height: 44px;
+}
+
+.search-submit-btn img {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+.search-submit-fallback {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+.search-submit-btn.search-submit-btn .spinner {
+  border-color: rgba(0, 0, 0, 0.15);
+  border-top-color: var(--accent);
 }
 
 .adjust-panel {
@@ -1708,6 +1796,17 @@ textarea {
 }
 
 /* Notes */
+
+/* Note viewer/editor - shown directly in the Notes page's main panel now
+   (see NotesView.js), not in a side drawer anymore, so it's capped at a
+   readable width instead of stretching across the whole panel. Calendar
+   page's own note drawer (DrawerShell's `wide` prop) still uses these same
+   classes; the max-width is comfortably narrower than that drawer already,
+   so it's a no-op there. */
+.note-detail,
+.note-editor {
+  max-width: 640px;
+}
 
 /* Note drawer (see DrawerShell's `wide` prop) - text is +10% over the
    normal .markdown-body/.tag/date sizes for easier reading at that width. */

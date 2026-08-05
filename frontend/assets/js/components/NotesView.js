@@ -2,7 +2,6 @@ const { ref, computed } = window.Vue;
 import { store } from "../store.js";
 import { icons } from "../icons.js";
 import { renderMarkdown } from "../markdown.js";
-import DrawerShell from "./DrawerShell.js";
 import ColorPicker from "./ColorPicker.js";
 import TagPicker from "./TagPicker.js";
 
@@ -17,7 +16,7 @@ const MARKDOWN_HELP = `
 `;
 
 export default {
-  components: { DrawerShell, ColorPicker, TagPicker },
+  components: { ColorPicker, TagPicker },
   setup() {
     // 這頁預設一律顯示全部筆記列表;側欄的「Template Manage」按鈕
     // (Sidebar.js 的 'notes' 分支)會把整個主畫面切換成 Template Manage 畫面
@@ -50,15 +49,10 @@ export default {
       return order.map((tag) => ({ tag, notes: groups[tag] }));
     });
 
-    // Tags are no longer registered through a dedicated "add tag" box - new
-    // tag names typed straight into a note's Tags field get auto-registered
-    // on save (see store.createNote/updateNote's ensureNoteTags call), so
-    // they show up here and in TagPicker's checklist without an extra step.
-    async function removeTag(t) {
-      if (confirm(`Delete tag "${t.name}"? Notes already tagged with it keep the tag text - this only removes it from the saved list.`)) {
-        await store.deleteNoteTag(t.id);
-      }
-    }
+    // Tag 的建立/改名/刪除都搬到 Manage 畫面的 Tag Manage 區塊了(見下面)- 這裡
+    // 的篩選 chips 純粹拿來篩選,不再放刪除按鈕。新 tag 名稱只要直接打在某則
+    // 筆記的 Tags 欄位存檔就會自動註冊(見 store.createNote/updateNote 的
+    // ensureNoteTags),不需要另外的「新增 tag」入口。
 
     // "2026-08-05T12:00:00" -> "2026/8/5" (drawer's full-timestamp display)
     function fmtDateShort(d) {
@@ -241,9 +235,40 @@ export default {
       showTemplateForm.value = false;
     }
 
+    // --- Tag Manage(同一個 Manage 畫面裡的第二個區塊)---
+
+    async function promptNewTag() {
+      const name = prompt("Tag name");
+      if (name && name.trim()) {
+        try {
+          await store.ensureNoteTags([name.trim()]);
+          store.showNotice("Tag created");
+        } catch (err) {
+          store.showNotice("Couldn't create tag", "error");
+        }
+      }
+    }
+
+    async function renameTag(t) {
+      const name = prompt("Tag name", t.name);
+      if (name && name.trim() && name.trim() !== t.name) {
+        try {
+          await store.updateNoteTag(t.id, name.trim());
+        } catch (err) {
+          store.showNotice("Couldn't rename tag", "error");
+        }
+      }
+    }
+
+    async function deleteTagRow(t) {
+      if (confirm(`Delete tag "${t.name}"? Notes already tagged with it keep the tag text - this only removes it from the saved list.`)) {
+        await store.deleteNoteTag(t.id);
+      }
+    }
+
     return {
       store, icons, renderMarkdown, MARKDOWN_HELP,
-      sortMode, pickTagFilter, allNotesByTag, removeTag,
+      sortMode, pickTagFilter, allNotesByTag,
       fmtDateShort, fmtDateLabel,
       showNewNote, newNoteTitle, newNoteContent, newNoteTags, newNoteColor, savingNewNote,
       toggleNewNote, saveNewNote,
@@ -251,6 +276,7 @@ export default {
       openNote, closeNote, startEditNote, cancelEditNote, saveNoteEdit, removeNote,
       showTemplateForm, tmName, tmContent, tmTags, tmSaving,
       startNewTemplate, editTemplateRow, cancelTemplateForm, saveTemplate, deleteTemplateRow, closeTemplateManage,
+      promptNewTag, renameTag, deleteTagRow,
     };
   },
   template: `
@@ -258,22 +284,41 @@ export default {
     <template v-if="store.templateManageOpen">
       <div class="template-manage">
         <div class="template-manage-header row between">
-          <h2>Template Manage</h2>
+          <h2>Manage</h2>
           <button class="icon-btn" title="Back to notes" @click="closeTemplateManage" v-html="icons.close"></button>
         </div>
 
         <template v-if="!showTemplateForm">
-          <div class="template-manage-list">
-            <div v-for="t in store.noteTemplates" :key="t.id" class="session-item">
-              <span class="session-title">{{ t.name }}</span>
-              <span class="session-actions">
-                <button class="mini-icon-btn" title="Edit" @click="editTemplateRow(t)" v-html="icons.edit"></button>
-                <button class="mini-icon-btn" title="Delete" @click="deleteTemplateRow(t)" v-html="icons.trash"></button>
-              </span>
+          <div class="manage-section">
+            <div class="manage-section-header row between">
+              <h3>Template List</h3>
+              <button class="icon-btn" title="New template" @click="startNewTemplate" v-html="icons.plus"></button>
             </div>
-            <div v-if="!store.noteTemplates.length" class="empty-state">No templates yet</div>
+            <div class="manage-card-grid">
+              <div v-for="t in store.noteTemplates" :key="t.id" class="manage-card" @click="editTemplateRow(t)">
+                <button class="mini-icon-btn manage-card-delete" title="Delete" @click.stop="deleteTemplateRow(t)" v-html="icons.trash"></button>
+                <div class="manage-card-title">{{ t.name }}</div>
+                <div v-if="t.tags && t.tags.length" class="tag-row">
+                  <span class="tag" v-for="tg in t.tags" :key="tg">{{ tg }}</span>
+                </div>
+              </div>
+              <div v-if="!store.noteTemplates.length" class="empty-state">No templates yet</div>
+            </div>
           </div>
-          <button class="icon-btn new-item-btn" title="New template" @click="startNewTemplate" v-html="icons.plus"></button>
+
+          <div class="manage-section">
+            <div class="manage-section-header row between">
+              <h3>Tag Manage</h3>
+              <button class="icon-btn" title="New tag" @click="promptNewTag" v-html="icons.plus"></button>
+            </div>
+            <div class="tag-row">
+              <span v-for="t in store.noteTags" :key="t.id" class="tag notes-tag-manage">
+                <span class="clickable" @click="renameTag(t)">{{ t.name }}</span>
+                <button class="mini-icon-btn" title="Delete" @click="deleteTagRow(t)">×</button>
+              </span>
+              <div v-if="!store.noteTags.length" class="empty-state">No tags yet</div>
+            </div>
+          </div>
         </template>
 
         <div v-else class="template-manage-form">
@@ -293,67 +338,7 @@ export default {
       </div>
     </template>
 
-    <template v-else>
-      <div class="wiki-toolbar" style="justify-content:space-between;">
-        <div class="notes-tabs">
-          <button class="notes-tab" :class="{active: sortMode === 'date'}" @click="sortMode = 'date'">
-            <span v-html="icons.calendar"></span> By Date
-          </button>
-          <button class="notes-tab" :class="{active: sortMode === 'tag'}" @click="sortMode = 'tag'">
-            <span v-html="icons.tag"></span> By Tag
-          </button>
-        </div>
-        <button class="icon-btn" title="New note" @click="toggleNewNote" v-html="icons.plus"></button>
-      </div>
-
-      <div v-if="showNewNote" class="note-editor">
-        <input type="text" v-model="newNoteTitle" class="note-editor-title-input" placeholder="Note title" />
-        <div class="row" style="gap:8px; align-items:center; margin-bottom:8px;">
-          <input type="text" v-model="newNoteTags" class="note-editor-title-input" style="flex:1; margin-bottom:0;" placeholder="Tags (comma separated)" />
-          <TagPicker v-model="newNoteTags" :options="store.noteTags" />
-          <ColorPicker v-model="newNoteColor" />
-        </div>
-        <textarea v-model="newNoteContent" class="note-editor-textarea" rows="8" placeholder="Write your note in Markdown…"></textarea>
-        <button class="btn" :disabled="savingNewNote || !newNoteTitle.trim()" @click="saveNewNote">
-          <span v-if="savingNewNote" class="spinner"></span>{{ savingNewNote ? ' Saving…' : 'Save note' }}
-        </button>
-      </div>
-
-      <div v-if="store.noteTags.length" class="tag-row notes-tag-filter">
-        <span v-for="t in store.noteTags" :key="t.id" class="tag notes-tag-manage" :class="{active: store.notesTagFilter === t.name}">
-          <span class="clickable" @click="pickTagFilter(t.name)">{{ t.name }}</span>
-          <button class="mini-icon-btn" title="Delete tag" @click="removeTag(t)">×</button>
-        </span>
-      </div>
-
-      <template v-if="sortMode === 'date'">
-        <template v-for="group in store.allNotesByDate" :key="group.date">
-          <div class="notes-date-sep">{{ fmtDateLabel(group.date) }}</div>
-          <div class="notes-grid">
-            <div v-for="n in group.notes" :key="n.id" class="card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id)">
-              <div class="day-card-title">{{ n.title }}</div>
-              <div v-if="n.tags && n.tags.length" class="tag-row">
-                <span class="tag tag-solid" v-for="t in n.tags" :key="t">{{ t }}</span>
-              </div>
-            </div>
-          </div>
-        </template>
-      </template>
-      <template v-else>
-        <template v-for="group in allNotesByTag" :key="group.tag">
-          <div class="notes-date-sep">{{ group.tag }}</div>
-          <div class="notes-grid">
-            <div v-for="n in group.notes" :key="n.id" class="card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id)">
-              <div class="day-card-title">{{ n.title }}</div>
-            </div>
-          </div>
-        </template>
-      </template>
-      <div v-if="!store.allNotes.length" class="empty-state">No notes yet</div>
-    </template>
-
-    <!-- Note view/edit drawer - same store.viewingNote the calendar page uses -->
-    <DrawerShell v-if="store.loadingNoteView || store.viewingNote" title="Note" wide @close="closeNote">
+    <template v-else-if="store.loadingNoteView || store.viewingNote">
       <div v-if="store.loadingNoteView" class="loading-row"><span class="spinner"></span> Loading…</div>
 
       <template v-else-if="store.viewingNote">
@@ -390,6 +375,7 @@ export default {
                       @click="store.toggleNoteFavorite(store.viewingNote.id)"
                       v-html="store.viewingNote.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
               <button class="icon-btn" title="Delete" @click="removeNote" v-html="icons.trash"></button>
+              <button class="icon-btn" title="Back to notes" @click="closeNote" v-html="icons.close"></button>
             </div>
           </div>
           <div class="note-detail-date">{{ fmtDateShort(store.viewingNote.created_at) }}</div>
@@ -400,7 +386,63 @@ export default {
           <div class="markdown-body" v-html="renderMarkdown(store.viewingNote.content)"></div>
         </div>
       </template>
-    </DrawerShell>
+    </template>
+
+    <template v-else>
+      <div class="wiki-toolbar">
+        <button class="icon-btn" title="New note" @click="toggleNewNote" v-html="icons.plus"></button>
+        <div class="notes-tabs">
+          <button class="notes-tab" :class="{active: sortMode === 'date'}" @click="sortMode = 'date'">
+            <span v-html="icons.calendar"></span> By Date
+          </button>
+          <button class="notes-tab" :class="{active: sortMode === 'tag'}" @click="sortMode = 'tag'">
+            <span v-html="icons.tag"></span> By Tag
+          </button>
+        </div>
+      </div>
+
+      <div v-if="showNewNote" class="note-editor">
+        <input type="text" v-model="newNoteTitle" class="note-editor-title-input" placeholder="Note title" />
+        <div class="row" style="gap:8px; align-items:center; margin-bottom:8px;">
+          <input type="text" v-model="newNoteTags" class="note-editor-title-input" style="flex:1; margin-bottom:0;" placeholder="Tags (comma separated)" />
+          <TagPicker v-model="newNoteTags" :options="store.noteTags" />
+          <ColorPicker v-model="newNoteColor" />
+        </div>
+        <textarea v-model="newNoteContent" class="note-editor-textarea" rows="8" placeholder="Write your note in Markdown…"></textarea>
+        <button class="btn" :disabled="savingNewNote || !newNoteTitle.trim()" @click="saveNewNote">
+          <span v-if="savingNewNote" class="spinner"></span>{{ savingNewNote ? ' Saving…' : 'Save note' }}
+        </button>
+      </div>
+
+      <div v-if="sortMode === 'tag' && store.noteTags.length" class="tag-row notes-tag-filter">
+        <span v-for="t in store.noteTags" :key="t.id" class="tag clickable" :class="{active: store.notesTagFilter === t.name}" @click="pickTagFilter(t.name)">{{ t.name }}</span>
+      </div>
+
+      <template v-if="sortMode === 'date'">
+        <template v-for="group in store.allNotesByDate" :key="group.date">
+          <div class="notes-date-sep">{{ fmtDateLabel(group.date) }}</div>
+          <div class="notes-grid">
+            <div v-for="n in group.notes" :key="n.id" class="card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id)">
+              <div class="day-card-title">{{ n.title }}</div>
+              <div v-if="n.tags && n.tags.length" class="tag-row">
+                <span class="tag tag-solid" v-for="t in n.tags" :key="t">{{ t }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </template>
+      <template v-else>
+        <template v-for="group in allNotesByTag" :key="group.tag">
+          <div class="notes-date-sep">{{ group.tag }}</div>
+          <div class="notes-grid">
+            <div v-for="n in group.notes" :key="n.id" class="card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id)">
+              <div class="day-card-title">{{ n.title }}</div>
+            </div>
+          </div>
+        </template>
+      </template>
+      <div v-if="!store.allNotes.length" class="empty-state">No notes yet</div>
+    </template>
   </div>
   `,
 };

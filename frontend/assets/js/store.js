@@ -440,6 +440,7 @@ export const store = reactive({
   // notes through these same two functions) ---
 
   async openNoteView(id) {
+    this.templateManageOpen = false; // Notes 頁的 Manage 畫面優先權比較高,開筆記前要先關掉,不然筆記畫面不會顯示出來
     this.loadingNoteView = true;
     this.viewingNote = null;
     try {
@@ -544,6 +545,12 @@ export const store = reactive({
     if (!missing.length) return;
     await Promise.all(missing.map((n) => api.post("/api/notes/tags", { name: n })));
     await this.loadNoteTags();
+  },
+
+  async updateNoteTag(id, name) {
+    const t = await api.patch(`/api/notes/tags/${id}`, { name });
+    await this.loadNoteTags();
+    return t;
   },
 
   async deleteNoteTag(id) {

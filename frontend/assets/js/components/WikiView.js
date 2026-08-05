@@ -13,6 +13,7 @@ export default {
     const searchQuestion = ref("");
     const searching = ref(false);
     const composing = ref(false); // shared IME-composition guard for both fields
+    const searchBtnImgOk = ref(true); // search.png 讀取失敗就換成 SVG+文字備援
 
     // --- Adjust drawer (right-side, propose-then-confirm) ---
     const showAdjustDrawer = ref(false);
@@ -118,6 +119,7 @@ export default {
       searchKeyword,
       searchQuestion,
       searching,
+      searchBtnImgOk,
       onIconError,
       onCompositionStart,
       onCompositionEnd,
@@ -170,8 +172,12 @@ export default {
         <input type="text" v-model="searchQuestion" class="search-panel-input"
                @compositionstart="onCompositionStart" @compositionend="onCompositionEnd"
                @keydown="onSearchFieldKeydown" />
-        <button class="btn" :disabled="searching || !searchKeyword.trim() || !searchQuestion.trim()" @click="runSearch">
-          <span v-if="searching" class="spinner"></span>{{ searching ? ' Searching…' : 'Search & add to wiki' }}
+        <button class="btn search-submit-btn" :disabled="searching || !searchKeyword.trim() || !searchQuestion.trim()" @click="runSearch">
+          <span v-if="searching" class="spinner"></span>
+          <template v-else>
+            <img v-if="searchBtnImgOk" src="assets/images/search.png" alt="Search & add to wiki" @error="searchBtnImgOk = false" />
+            <span v-else class="search-submit-fallback"><span v-html="icons.search"></span> Search &amp; add to wiki</span>
+          </template>
         </button>
       </div>
     </div>
