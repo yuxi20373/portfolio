@@ -114,61 +114,14 @@ def create_note(
     return _note_dict(note)
 
 
-@router.get("/{note_id}")
-def get_note(note_id: int, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
-    n = _get_owned_note(db, note_id, user)
-    return _note_dict(n)
-
-
-@router.patch("/{note_id}")
-def update_note(
-    note_id: int,
-    payload: NoteUpdate,
-    db: DBSession = Depends(get_db),
-    user: models.User = Depends(get_current_user),
-):
-    """Direct manual edit of a note's title/content/tags - the note's date
-    (created_at) doesn't change; delete and re-add it under a different day
-    if you need to move it."""
-    n = _get_owned_note(db, note_id, user)
-    if payload.title is not None:
-        title = payload.title.strip()
-        if not title:
-            raise HTTPException(400, "title cannot be empty")
-        n.title = title
-    if payload.content is not None:
-        n.content = payload.content
-    if payload.tags is not None:
-        n.tags = payload.tags
-    if payload.color is not None:
-        n.color = payload.color
-    db.commit()
-    db.refresh(n)
-    return _note_dict(n)
-
-
-@router.patch("/{note_id}/favorite")
-def update_note_favorite(
-    note_id: int,
-    payload: FavoriteUpdate,
-    db: DBSession = Depends(get_db),
-    user: models.User = Depends(get_current_user),
-):
-    n = _get_owned_note(db, note_id, user)
-    n.is_favorited = payload.favorited
-    db.commit()
-    return {"id": n.id, "is_favorited": n.is_favorited}
-
-
-@router.delete("/{note_id}")
-def delete_note(note_id: int, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
-    n = _get_owned_note(db, note_id, user)
-    db.delete(n)
-    db.commit()
-    return {"ok": True}
-
-
 # ---------------- Templates (standalone Notes page) ----------------
+#
+# These, and the Tags routes further down, are registered before the
+# generic /{note_id} routes below on purpose - FastAPI/Starlette matches
+# routes in registration order, and /{note_id} matches any single path
+# segment (including the literal strings "templates"/"tags"), so if it came
+# first, GET /api/notes/templates and /tags would be swallowed by get_note()
+# and fail trying to int()-parse "templates"/"tags" as a note id.
 
 
 @router.get("/templates")
@@ -265,5 +218,65 @@ def delete_note_tag(tag_id: int, db: DBSession = Depends(get_db), user: models.U
     if not t or t.user_id != user.id:
         raise HTTPException(404, "tag not found")
     db.delete(t)
+    db.commit()
+    return {"ok": True}
+
+
+# ---------------- Single note by id ----------------
+#
+# Registered last - see the comment above the Templates section for why
+# these generic /{note_id} routes have to come after every static-path route.
+
+
+@router.get("/{note_id}")
+def get_note(note_id: int, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+    n = _get_owned_note(db, note_id, user)
+    return _note_dict(n)
+
+
+@router.patch("/{note_id}")
+def update_note(
+    note_id: int,
+    payload: NoteUpdate,
+    db: DBSession = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    """Direct manual edit of a note's title/content/tags - the note's date
+    (created_at) doesn't change; delete and re-add it under a different day
+    if you need to move it."""
+    n = _get_owned_note(db, note_id, user)
+    if payload.title is not None:
+        title = payload.title.strip()
+        if not title:
+            raise HTTPException(400, "title cannot be empty")
+        n.title = title
+    if payload.content is not None:
+        n.content = payload.content
+    if payload.tags is not None:
+        n.tags = payload.tags
+    if payload.color is not None:
+        n.color = payload.color
+    db.commit()
+    db.refresh(n)
+    return _note_dict(n)
+
+
+@router.patch("/{note_id}/favorite")
+def update_note_favorite(
+    note_id: int,
+    payload: FavoriteUpdate,
+    db: DBSession = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    n = _get_owned_note(db, note_id, user)
+    n.is_favorited = payload.favorited
+    db.commit()
+    return {"id": n.id, "is_favorited": n.is_favorited}
+
+
+@router.delete("/{note_id}")
+def delete_note(note_id: int, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+    n = _get_owned_note(db, note_id, user)
+    db.delete(n)
     db.commit()
     return {"ok": True}

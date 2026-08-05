@@ -61,13 +61,13 @@ body {
 }
 
 /* Standing convention: every input/textarea's English text (typed content
-   and placeholders) uses Genos - Genos has no CJK glyphs, so mixed Chinese
+   and placeholders) uses Quando - Quando has no CJK glyphs, so mixed Chinese
    text automatically falls through to the system stack per-character,
    nothing extra needed to keep Chinese input readable. Button labels use
    Cause instead (see .btn below). */
 input,
 textarea {
-  font-family: "Genos", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: "Quando", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
 #app {
@@ -194,7 +194,8 @@ textarea {
    plain body background, never overlapping text. */
 .corner-mascot {
   position: fixed;
-  left: calc(280px + 16px); /* clears the desktop sidebar's own 280px width */
+  left: calc(280px + 16px);
+  /* clears the desktop sidebar's own 280px width */
   bottom: 14px;
   height: 60vh;
   width: auto;
@@ -546,7 +547,7 @@ textarea {
   background: var(--white);
 }
 
-.memo-checkbox input:checked + .memo-checkbox-box {
+.memo-checkbox input:checked+.memo-checkbox-box {
   background: var(--accent);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -1216,7 +1217,6 @@ textarea {
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 12px;
-  font-family: "Genos", sans-serif;
   color: var(--text);
   white-space: nowrap;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
@@ -1349,7 +1349,7 @@ textarea {
   height: 16px;
 }
 
-.notes-tag-manage > span {
+.notes-tag-manage>span {
   cursor: pointer;
 }
 
@@ -2291,7 +2291,8 @@ select {
   font-family: "Akaya Kanadaka", cursive;
   font-size: 44px;
   color: var(--accent-hover);
-  margin-bottom: -20px; /* home-panel's own 36px gap is plenty before the hero below */
+  margin-bottom: -20px;
+  /* home-panel's own 36px gap is plenty before the hero below */
 }
 
 .home-hero-wrap {
@@ -2317,7 +2318,8 @@ select {
   object-fit: contain;
   display: block;
   filter: drop-shadow(0 12px 30px rgba(61, 57, 41, 0.18));
-  transform: scale(.7); /* hero/rainy/sunny all render 30% smaller than the wrap box */
+  transform: scale(.7);
+  /* hero/rainy/sunny all render 30% smaller than the wrap box */
 }
 
 .home-hero-wrap.home-hero-fallback {
@@ -2392,10 +2394,9 @@ select {
 }
 
 .home-float-notes {
-  top: -30px;
-  left: 50%;
-  margin-left: -34px;
-  animation-delay: .45s;
+  bottom: 6%;
+  left: -20px;
+  animation-delay: 1.8s;
 }
 
 .home-float-wiki {
@@ -2417,16 +2418,17 @@ select {
 }
 
 .home-float-weather {
-  bottom: 6%;
-  left: -20px;
-  animation-delay: 1.8s;
+  top: -30px;
+  left: 50%;
+  margin-left: -34px;
+  animation-delay: .45s;
 }
 
 /* Home-page-only light/dark toggle - mirrors .home-float-notes' top-center
    slot but at the bottom, since notes already claimed top-center. */
 .home-float-theme {
-  bottom: -30px;
-  left: 50%;
+  top: -30px;
+  left: 90%;
   margin-left: -34px;
   animation-delay: 2.25s;
 }
@@ -2603,14 +2605,17 @@ select {
 
 @media (max-width: 768px) {
   .corner-mascot {
-    height: 32vh; /* 60vh would swallow most of a phone screen */
-    left: 8px; /* the sidebar is an overlay drawer here, not a static column */
+    height: 32vh;
+    /* 60vh would swallow most of a phone screen */
+    left: 8px;
+    /* the sidebar is an overlay drawer here, not a static column */
     bottom: 8px;
   }
 
   .home-float.corner-logout {
     right: 8px;
-    bottom: 78px; /* clears .chat-input's send button, pinned to the same corner */
+    bottom: 78px;
+    /* clears .chat-input's send button, pinned to the same corner */
   }
 
   .mobile-menu-btn {
@@ -2652,7 +2657,8 @@ select {
   }
 
   .home-panel {
-    padding: 68px 16px 24px; /* a bit more than the other views' 56px - see .home-float-wiki below */
+    padding: 68px 16px 24px;
+    /* a bit more than the other views' 56px - see .home-float-wiki below */
     gap: 24px;
   }
 
