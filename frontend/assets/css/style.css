@@ -2419,7 +2419,7 @@ select {
 
 .home-float-weather {
   top: -30px;
-  left: 50%;
+  left: 10%;
   margin-left: -34px;
   animation-delay: .45s;
 }
@@ -2427,8 +2427,8 @@ select {
 /* Home-page-only light/dark toggle - mirrors .home-float-notes' top-center
    slot but at the bottom, since notes already claimed top-center. */
 .home-float-theme {
-  top: -30px;
-  left: 90%;
+  right: 14px;
+  top: 96px;
   margin-left: -34px;
   animation-delay: 2.25s;
 }
@@ -2707,16 +2707,6 @@ select {
   .home-float {
     width: 52px;
     height: 52px;
-  }
-
-  .home-float-notes {
-    top: -20px;
-    margin-left: -26px;
-  }
-
-  .home-float-theme {
-    bottom: -20px;
-    margin-left: -26px;
   }
 
   .home-float-wiki {
