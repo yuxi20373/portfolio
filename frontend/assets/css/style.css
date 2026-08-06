@@ -1798,14 +1798,13 @@ textarea {
 /* Notes */
 
 /* Note viewer/editor - shown directly in the Notes page's main panel now
-   (see NotesView.js), not in a side drawer anymore, so it's capped at a
-   readable width instead of stretching across the whole panel. Calendar
-   page's own note drawer (DrawerShell's `wide` prop) still uses these same
-   classes; the max-width is comfortably narrower than that drawer already,
-   so it's a no-op there. */
+   (see NotesView.js), not in a side drawer anymore (Calendar page dropped
+   its own note drawer too - it's view-only now, clicking a note there
+   jumps to this page instead). Sized to 60% of the viewport width instead
+   of stretching to fill the whole main panel. */
 .note-detail,
 .note-editor {
-  max-width: 640px;
+  width: 60vw;
 }
 
 /* Note drawer (see DrawerShell's `wide` prop) - text is +10% over the
@@ -1881,8 +1880,9 @@ textarea {
 }
 
 .note-template-select {
-  margin-right: auto;
+  display: block;
   max-width: 55%;
+  margin-bottom: 8px;
 }
 
 /* Color picker (see ColorPicker.js) - sits beside the Tags field in every
@@ -1977,6 +1977,7 @@ textarea {
 
 .note-editor-textarea {
   width: 100%;
+  height: 70vh;
   padding: 10px;
   border-radius: 6px;
   border: 1px solid var(--border);

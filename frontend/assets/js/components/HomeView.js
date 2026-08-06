@@ -9,11 +9,13 @@ import { api } from "../api.js";
 // against them directly.
 // Stickers 1-3 have a dark-mode variant (darkSrc); sticker 4 doesn't, so it
 // keeps its light-mode image in both themes. See stickerSrc() below.
+// src/darkSrc 只存檔名(不含路徑)- 實際路徑要透過 store.img() 加上目前的
+// 圖片主題資料夾,見下面的 stickerSrc()。
 const STICKERS = [
-  { id: 1, src: "assets/images/sticker-1.png", darkSrc: "assets/images/sticker-1-dark.png", x: 80, y: -2, size: 192, rotate: -12, delay: 0.2 }, // 160 * 1.2
-  { id: 2, src: "assets/images/sticker-2.png", darkSrc: "assets/images/sticker-2-dark.png", x: -14, y: 55, size: 144, rotate: 10, delay: 1.4 }, // 180 * 0.8
-  { id: 3, src: "assets/images/sticker-3.png", darkSrc: "assets/images/sticker-3-dark.png", x: 40, y: 80, size: 176, rotate: -6, delay: 2.4 },
-  { id: 4, src: "assets/images/sticker-4.png", x: 8, y: 40, size: 140, rotate: 14, delay: 3.2 },
+  { id: 1, src: "sticker-1.png", darkSrc: "sticker-1-dark.png", x: 80, y: -2, size: 192, rotate: -12, delay: 0.2 }, // 160 * 1.2
+  { id: 2, src: "sticker-2.png", darkSrc: "sticker-2-dark.png", x: -14, y: 55, size: 144, rotate: 10, delay: 1.4 }, // 180 * 0.8
+  { id: 3, src: "sticker-3.png", darkSrc: "sticker-3-dark.png", x: 40, y: 80, size: 176, rotate: -6, delay: 2.4 },
+  { id: 4, src: "sticker-4.png", x: 8, y: 40, size: 140, rotate: 14, delay: 3.2 },
 ];
 
 // How close the pointer has to get (px, measured from the sticker's own
@@ -60,7 +62,7 @@ export default {
       e.target.style.display = "";
     }
     function stickerSrc(s) {
-      return store.theme === "dark" && s.darkSrc ? s.darkSrc : s.src;
+      return store.img(store.theme === "dark" && s.darkSrc ? s.darkSrc : s.src);
     }
     // Dark-mode sticker art reads much bigger than the light-mode originals
     // at the same --size, so it's shrunk to 40% of the light-mode size.
@@ -106,10 +108,10 @@ export default {
     // Weather states win regardless of theme; otherwise the default (quokka)
     // hero has its own dark-mode variant, same idea as the stickers.
     const heroSrc = computed(() => {
-      if (isRaining.value) return "assets/images/rainy.png";
-      if (isSunny.value) return "assets/images/sunny.png";
-      if (store.theme === "dark") return "assets/images/night.png";
-      return "assets/images/hero.png";
+      if (isRaining.value) return store.img("rainy.png");
+      if (isSunny.value) return store.img("sunny.png");
+      if (store.theme === "dark") return store.img("night.png");
+      return store.img("hero.png");
     });
 
     // "Slide away when the pointer gets close" - pointermove covers mouse
@@ -185,42 +187,42 @@ export default {
       <button class="home-float home-float-notes" title="Open your notes" @click="goNotes">
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="icons.notes"></span>
-          <img src="assets/images/icon-notes.png" alt="" @error="onImgError" />
+          <img :src="store.img('icon-notes.png')" alt="" @error="onImgError" />
         </span>
       </button>
 
       <button class="home-float home-float-wiki" title="Open the knowledge base" @click="goWiki">
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="icons.wiki"></span>
-          <img src="assets/images/icon-wiki.png" alt="" @error="onImgError" />
+          <img :src="store.img('icon-wiki.png')" alt="" @error="onImgError" />
         </span>
       </button>
 
       <button class="home-float home-float-calendar" title="Open the calendar" @click="goCalendar">
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="icons.calendar"></span>
-          <img src="assets/images/icon-calendar.png" alt="" @error="onImgError" />
+          <img :src="store.img('icon-calendar.png')" alt="" @error="onImgError" />
         </span>
       </button>
 
       <button class="home-float home-float-news" title="Check the news" @click="goNews">
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="icons.news"></span>
-          <img src="assets/images/icon-news.png" alt="" @error="onImgError" />
+          <img :src="store.img('icon-news.png')" alt="" @error="onImgError" />
         </span>
       </button>
 
       <button class="home-float corner-weather" title="Check today's weather" @click="onWeatherClick">
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="icons.cloud"></span>
-          <img src="assets/images/icon-weather.png" alt="" @error="onImgError" />
+          <img :src="store.img('icon-weather.png')" alt="" @error="onImgError" />
         </span>
       </button>
 
       <button class="home-float corner-theme" title="Toggle light / dark mode" @click="store.toggleTheme()">
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="store.theme === 'dark' ? icons.sun : icons.moon"></span>
-          <img :src="store.theme === 'dark' ? 'assets/images/dark.png' : 'assets/images/light.png'" alt="" @error="onImgError" @load="onImgLoad" />
+          <img :src="store.img(store.theme === 'dark' ? 'dark.png' : 'light.png')" alt="" @error="onImgError" @load="onImgLoad" />
         </span>
       </button>
     </div>

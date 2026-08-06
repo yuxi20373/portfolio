@@ -53,6 +53,13 @@ export default {
       if (notesFavoritesOpen.value) await store.loadFavoritedNotes();
     }
 
+    // 日曆頁現在只做資料呈現,不在頁面內開筆記,點了直接跳去 Notes 頁顯示
+    // (Notes 頁自己的 Favorites 清單則不用跳頁,已經在 Notes 頁了)。
+    function goToNote(id) {
+      store.view = "notes";
+      store.openNoteView(id);
+    }
+
     // "2026-08-05" -> "2026/8/5"
     function fmtDateLabel(dateStr) {
       const [y, m, d] = dateStr.split("-").map(Number);
@@ -226,6 +233,7 @@ export default {
       notesFavoritesOpen,
       homeIconOk,
       toggleNotesFavorites,
+      goToNote,
       fmtDateLabel,
       addingMemo,
       newMemoText,
@@ -238,7 +246,7 @@ export default {
   <aside class="sidebar" :class="{open: store.sidebarOpen}">
     <div class="icon-nav">
       <button class="icon-btn icon-btn-home" :class="{active: store.view==='home'}" @click="setView('home')" title="Home">
-        <img v-if="homeIconOk" src="assets/images/home.png" alt="" @error="homeIconOk = false" />
+        <img v-if="homeIconOk" :src="store.img('home.png')" alt="" @error="homeIconOk = false" />
         <span v-else v-html="icons.home"></span>
       </button>
       <button class="icon-btn" :class="{active: store.view==='chat'}" @click="setView('chat')" title="Chat" v-html="icons.chat"></button>
@@ -259,7 +267,7 @@ export default {
            @click="store.sessionFavoritesOnly = !store.sessionFavoritesOnly">
         <span class="favorites-row-icon">
           <span v-html="icons.bookmarkFilled"></span>
-          <img src="assets/images/star.png" alt="" @error="onIconError" />
+          <img :src="store.img('star.png')" alt="" @error="onIconError" />
         </span>
         <span class="session-title favorites-row-label">Favorites</span>
       </div>
@@ -305,7 +313,7 @@ export default {
            @click="store.wikiFavoritesOnly = !store.wikiFavoritesOnly">
         <span class="favorites-row-icon">
           <span v-html="icons.bookmarkFilled"></span>
-          <img src="assets/images/star.png" alt="" @error="onIconError" />
+          <img :src="store.img('star.png')" alt="" @error="onIconError" />
         </span>
         <span class="session-title favorites-row-label">Favorites</span>
       </div>
@@ -362,7 +370,7 @@ export default {
         <div class="session-item favorites-row" :class="{active: store.templateManageOpen}" @click="openTemplateManage">
           <span class="favorites-row-icon">
             <span v-html="icons.doc"></span>
-            <img src="assets/images/manager.png" alt="" @error="onIconError" />
+            <img :src="store.img('manager.png')" alt="" @error="onIconError" />
           </span>
           <span class="session-title favorites-row-label">Manage</span>
         </div>
@@ -370,7 +378,7 @@ export default {
         <div class="session-item favorites-row" :class="{active: notesFavoritesOpen}" @click="toggleNotesFavorites">
           <span class="favorites-row-icon">
             <span v-html="icons.bookmarkFilled"></span>
-            <img src="assets/images/star.png" alt="" @error="onIconError" />
+            <img :src="store.img('star.png')" alt="" @error="onIconError" />
           </span>
           <span class="session-title favorites-row-label">Favorites</span>
         </div>
@@ -394,7 +402,7 @@ export default {
              @click="store.selectNewsSource('__favorites__')">
           <span class="favorites-row-icon">
             <span v-html="icons.bookmarkFilled"></span>
-            <img src="assets/images/star.png" alt="" @error="onIconError" />
+            <img :src="store.img('star.png')" alt="" @error="onIconError" />
           </span>
           <span class="session-title favorites-row-label">Favorites</span>
         </div>
@@ -420,7 +428,7 @@ export default {
         <div class="session-item favorites-row" :class="{active: notesFavoritesOpen}" @click="toggleNotesFavorites">
           <span class="favorites-row-icon">
             <span v-html="icons.bookmarkFilled"></span>
-            <img src="assets/images/star.png" alt="" @error="onIconError" />
+            <img :src="store.img('star.png')" alt="" @error="onIconError" />
           </span>
           <span class="session-title favorites-row-label">Favorites</span>
         </div>
@@ -428,7 +436,7 @@ export default {
         <template v-if="notesFavoritesOpen">
           <template v-for="group in store.favoritedNotesByDate" :key="group.date">
             <div class="notes-favorites-date">{{ fmtDateLabel(group.date) }}</div>
-            <div v-for="n in group.notes" :key="n.id" class="session-item" @click="store.openNoteView(n.id)">
+            <div v-for="n in group.notes" :key="n.id" class="session-item" @click="goToNote(n.id)">
               <span v-if="n.color" class="note-color-dot" :class="'note-color-' + n.color"></span>
               <span class="session-title">{{ n.title }}</span>
             </div>

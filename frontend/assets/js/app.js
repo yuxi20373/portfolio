@@ -49,9 +49,9 @@ const App = {
     // kept in sync by CalendarView.js) instead of a static corner-calendar.png.
     const cornerSrc = computed(() => {
       if (store.view === "calendar" && store.calendarMonth) {
-        return `assets/images/month-${String(store.calendarMonth).padStart(2, "0")}.png`;
+        return store.img(`month-${String(store.calendarMonth).padStart(2, "0")}.png`);
       }
-      return `assets/images/corner-${store.view}.png`;
+      return store.img(`corner-${store.view}.png`);
     });
 
     // Quick logout from anywhere, without opening the sidebar drawer first
@@ -81,7 +81,7 @@ const App = {
     <button class="home-float corner-logout" title="Log out" @click="onLogoutClick">
       <span class="home-float-inner">
         <span class="home-float-fallback" v-html="icons.logout"></span>
-        <img src="assets/images/logout.png" alt="" @error="onCornerImgError" />
+        <img :src="store.img('logout.png')" alt="" @error="onCornerImgError" />
       </span>
     </button>
   </div>

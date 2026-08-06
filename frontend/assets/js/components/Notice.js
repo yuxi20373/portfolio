@@ -14,7 +14,7 @@ export default {
   <div v-if="store.notice" class="notice-toast" :class="'notice-' + store.notice.type" :key="store.notice.message">
     <span class="notice-toast-icon">
       <span v-html="store.notice.type === 'error' ? icons.alertCircle : icons.check"></span>
-      <img :src="store.notice.type === 'error' ? 'assets/images/notice-failed.png' : 'assets/images/notice-check.png'" alt="" @error="onImgError" />
+      <img :src="store.img(store.notice.type === 'error' ? 'notice-failed.png' : 'notice-check.png')" alt="" @error="onImgError" />
     </span>
     <span class="notice-toast-text">{{ store.notice.message }}</span>
   </div>

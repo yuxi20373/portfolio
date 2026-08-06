@@ -37,6 +37,11 @@ export const store = reactive({
   // site, not a sandboxed preview, so localStorage is the right tool here)
   theme: "light",
 
+  // 圖片主題(skin)- 例如 "quokka"。每個主題都是 assets/images/ 底下的一個
+  // 資料夾,裡面檔名完全一樣,所以只要換資料夾名稱就能整批換圖。用 img() 組
+  // 出實際路徑,不要在元件裡直接寫死 "assets/images/xxx.png"。
+  imageTheme: localStorage.getItem("imageTheme") || "quokka",
+
   // chat
   sessions: [],
   currentSessionId: null,
@@ -604,6 +609,17 @@ export const store = reactive({
     this.theme = this.theme === "dark" ? "light" : "dark";
     localStorage.setItem("theme", this.theme);
     document.documentElement.setAttribute("data-theme", this.theme);
+  },
+
+  // --- 圖片主題(skin)---
+
+  img(name) {
+    return `assets/images/${this.imageTheme}/${name}`;
+  },
+
+  setImageTheme(name) {
+    this.imageTheme = name;
+    localStorage.setItem("imageTheme", name);
   },
 
   // --- 頂部通知框(3秒後自動消失,見 Notice.js)。之後所有「建立」的動作

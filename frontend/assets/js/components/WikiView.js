@@ -142,7 +142,7 @@ export default {
     <h1 class="page-title">WIKI</h1>
     <div class="wiki-toolbar">
       <button class="btn search-toggle-btn" @click="showSearchBox = !showSearchBox">
-        <img v-if="searchToggleImgOk" src="assets/images/search.png" alt="Search" @error="searchToggleImgOk = false" />
+        <img v-if="searchToggleImgOk" :src="store.img('search.png')" alt="Search" @error="searchToggleImgOk = false" />
         <span v-else class="search-submit-fallback"><span v-html="icons.search"></span> Search</span>
       </button>
       <template v-if="store.currentWikiEntry && !editing">
@@ -156,7 +156,7 @@ export default {
     </div>
 
     <div v-if="showSearchBox" class="search-panel">
-      <img class="wiki-search-icon" src="assets/images/icon-search.png" alt="" @error="onIconError" />
+      <img class="wiki-search-icon" :src="store.img('icon-search.png')" alt="" @error="onIconError" />
       <div class="search-panel-fields">
         <label class="search-panel-label">Keyword
           <span class="search-panel-help">

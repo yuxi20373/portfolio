@@ -2,22 +2,8 @@ const { ref, computed, onMounted } = window.Vue;
 import { api } from "../api.js";
 import { store } from "../store.js";
 import { icons } from "../icons.js";
-import { renderMarkdown } from "../markdown.js";
-import DrawerShell from "./DrawerShell.js";
-import ColorPicker from "./ColorPicker.js";
-
-const MARKDOWN_HELP = `
-  <div><code># Heading</code></div>
-  <div><code>**bold**</code> &nbsp; <code>*italic*</code></div>
-  <div><code>- list item</code></div>
-  <div><code>1. numbered item</code></div>
-  <div><code>[text](url)</code></div>
-  <div><code>\`inline code\`</code></div>
-  <div><code>&gt; quote</code></div>
-`;
 
 export default {
-  components: { DrawerShell, ColorPicker },
   setup() {
     // If the home page's note mini calendar asked to jump to a specific
     // date, open that date's month instead of the current month.
@@ -37,31 +23,6 @@ export default {
     // --- Weather (Taichung) for the selected day, top-right corner ---
     const weather = ref(null);
     const weatherLoading = ref(false);
-
-    // --- Add note panel ---
-    const showAddNote = ref(false);
-    const newNoteTitle = ref("");
-    const newNoteContent = ref("");
-    const newNoteTags = ref("");
-    const newNoteColor = ref("");
-    const newNotePreview = ref(false);
-    const newNoteHelp = ref(false);
-    const savingNote = ref(false);
-    const newNoteTemplateId = ref("");
-
-    // --- Note view: right-side drawer (state lives in store.js - viewingNote/
-    // loadingNoteView - so Sidebar.js's Favorites list can open the same
-    // drawer this component renders; see openNote/closeNote below) ---
-
-    // --- Note edit (within the same drawer) ---
-    const editingNote = ref(false);
-    const editNoteTitle = ref("");
-    const editNoteContent = ref("");
-    const editNoteTags = ref("");
-    const editNoteColor = ref("");
-    const editNotePreview = ref(false);
-    const editNoteHelp = ref(false);
-    const savingNoteEdit = ref(false);
 
     const cells = computed(() => {
       const first = new Date(year.value, month.value - 1, 1);
@@ -86,8 +47,6 @@ export default {
 
     async function selectDay(dateStr) {
       selectedDate.value = dateStr;
-      showAddNote.value = false;
-
       weatherLoading.value = true;
       weather.value = null;
 
@@ -124,96 +83,11 @@ export default {
       store.selectWikiEntry(id);
     }
 
-    function toggleAddNote() {
-      showAddNote.value = !showAddNote.value;
-      newNoteTitle.value = "";
-      newNoteContent.value = "";
-      newNoteTags.value = "";
-      newNoteColor.value = "";
-      newNotePreview.value = false;
-      newNoteHelp.value = false;
-      newNoteTemplateId.value = "";
-    }
-
-    // Prefills the draft content from a saved template (see the standalone
-    // Notes page) - just a one-time copy, the note isn't linked back to it.
-    function applyNoteTemplate() {
-      const t = store.noteTemplates.find((x) => x.id === Number(newNoteTemplateId.value));
-      if (!t) return;
-      newNoteContent.value = t.content;
-      if (t.tags && t.tags.length) newNoteTags.value = t.tags.join(", ");
-    }
-
-    async function saveNote() {
-      if (!newNoteTitle.value.trim() || !selectedDate.value) return;
-      savingNote.value = true;
-      try {
-        await api.post("/api/notes", {
-          title: newNoteTitle.value.trim(),
-          content: newNoteContent.value,
-          tags: newNoteTags.value.split(",").map((t) => t.trim()).filter(Boolean),
-          color: newNoteColor.value,
-          date: selectedDate.value,
-        });
-        showAddNote.value = false;
-        await refresh();
-      } finally {
-        savingNote.value = false;
-      }
-    }
-
-    // Notes open in a right-side drawer (same visual pattern as the wiki
-    // Adjust drawer) - the open/loading state lives in store.js so
-    // Sidebar.js's calendar-branch Favorites list can open this same drawer.
-    async function openNote(id) {
-      editingNote.value = false;
-      await store.openNoteView(id);
-    }
-
-    function closeNote() {
-      store.closeNoteView();
-      editingNote.value = false;
-    }
-
-    function startEditNote() {
-      if (!store.viewingNote) return;
-      editNoteTitle.value = store.viewingNote.title;
-      editNoteContent.value = store.viewingNote.content;
-      editNoteTags.value = (store.viewingNote.tags || []).join(", ");
-      editNoteColor.value = store.viewingNote.color || "";
-      editNotePreview.value = false;
-      editNoteHelp.value = false;
-      editingNote.value = true;
-    }
-
-    function cancelEditNote() {
-      editingNote.value = false;
-    }
-
-    async function saveNoteEdit() {
-      if (!store.viewingNote || !editNoteTitle.value.trim()) return;
-      savingNoteEdit.value = true;
-      try {
-        await store.updateNote(store.viewingNote.id, {
-          title: editNoteTitle.value.trim(),
-          content: editNoteContent.value,
-          tags: editNoteTags.value.split(",").map((t) => t.trim()).filter(Boolean),
-          color: editNoteColor.value,
-        });
-        editingNote.value = false;
-        await refresh(); // title may have changed - update month grid / day list too
-      } finally {
-        savingNoteEdit.value = false;
-      }
-    }
-
-    async function removeNote() {
-      if (!store.viewingNote) return;
-      if (confirm(`Delete note "${store.viewingNote.title}"? This can't be undone.`)) {
-        await store.deleteNote(store.viewingNote.id);
-        closeNote();
-        await refresh();
-      }
+    // 日曆頁只做資料呈現,不在頁面內開筆記 - 點了直接跳去 Notes 頁顯示,跟
+    // openSession/openWikiEntry 同一套邏輯。
+    function openNote(id) {
+      store.view = "notes";
+      store.openNoteView(id);
     }
 
     // Compact "2026/7/24 AM 11:05" style timestamp
@@ -230,11 +104,6 @@ export default {
       return `${y}/${m}/${day} ${ampm} ${h}:${min}`;
     }
 
-    function fmtDateShort(d) {
-      const dt = new Date(d);
-      return `${dt.getFullYear()}/${dt.getMonth() + 1}/${dt.getDate()}`;
-    }
-
     const weatherHasData = computed(() => !!weather.value && weather.value.will_rain !== null);
 
     onMounted(async () => {
@@ -243,7 +112,6 @@ export default {
         await selectDay(jumpDate);
         store.pendingCalendarDate = null;
       }
-      if (!store.noteTemplates.length) store.loadNoteTemplates();
     });
 
     return {
@@ -251,14 +119,9 @@ export default {
       year, month, counts, monthNotes, cells,
       selectedDate, daySessions, dayWikiEntries, dayNotes,
       weather, weatherLoading, weatherHasData,
-      showAddNote, newNoteTitle, newNoteContent, newNoteTags, newNoteColor, newNotePreview, newNoteHelp, savingNote,
-      newNoteTemplateId, applyNoteTemplate,
-      editingNote, editNoteTitle, editNoteContent, editNoteTags, editNoteColor, editNotePreview, editNoteHelp, savingNoteEdit,
-      icons, renderMarkdown, MARKDOWN_HELP,
-      refresh, selectDay, prevMonth, nextMonth, openSession, openWikiEntry,
-      toggleAddNote, saveNote, openNote, closeNote,
-      startEditNote, cancelEditNote, saveNoteEdit, removeNote,
-      fmtCompact, fmtDateShort,
+      icons,
+      refresh, selectDay, prevMonth, nextMonth, openSession, openWikiEntry, openNote,
+      fmtCompact,
     };
   },
   template: `
@@ -306,37 +169,8 @@ export default {
     </div>
 
     <div v-if="selectedDate" class="day-detail">
-      <h3 class="day-detail-heading row between">
-        <span>Notes</span>
-        <button class="icon-btn" title="Add note" @click="toggleAddNote" v-html="icons.plus"></button>
-      </h3>
-
-      <div v-if="showAddNote" class="note-editor">
-        <input type="text" v-model="newNoteTitle" class="note-editor-title-input" placeholder="Note title" />
-        <div class="row" style="gap:8px; align-items:center; margin-bottom:8px;">
-          <input type="text" v-model="newNoteTags" class="note-editor-title-input" style="flex:1; margin-bottom:0;" placeholder="Tags (comma separated)" />
-          <ColorPicker v-model="newNoteColor" />
-        </div>
-        <div class="note-editor-toolbar">
-          <select v-if="store.noteTemplates.length" class="note-template-select" v-model="newNoteTemplateId" @change="applyNoteTemplate">
-            <option value="" disabled>Apply template…</option>
-            <option v-for="t in store.noteTemplates" :key="t.id" :value="t.id">{{ t.name }}</option>
-          </select>
-          <button class="icon-btn" title="Preview" :class="{active: newNotePreview}" @click="newNotePreview = !newNotePreview" v-html="icons.eye"></button>
-          <div class="note-help-wrap">
-            <button class="icon-btn" title="Markdown syntax help" @click="newNoteHelp = !newNoteHelp">?</button>
-            <div v-if="newNoteHelp" class="note-help-popover" v-html="MARKDOWN_HELP"></div>
-          </div>
-        </div>
-        <textarea v-if="!newNotePreview" v-model="newNoteContent" class="note-editor-textarea" rows="10"
-                  placeholder="Write your note in Markdown…"></textarea>
-        <div v-else class="markdown-body note-editor-preview" v-html="renderMarkdown(newNoteContent)"></div>
-        <button class="btn" :disabled="savingNote || !newNoteTitle.trim()" @click="saveNote">
-          <span v-if="savingNote" class="spinner"></span>{{ savingNote ? ' Saving…' : 'Save note' }}
-        </button>
-      </div>
-
-      <div v-if="!showAddNote && !dayNotes.length" class="hint">No notes on this day</div>
+      <h3 class="day-detail-heading">Notes</h3>
+      <div v-if="!dayNotes.length" class="hint">No notes on this day</div>
       <div v-for="n in dayNotes" :key="n.id" class="day-card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id)">
         <div class="day-card-title">{{ n.title }}</div>
       </div>
@@ -355,58 +189,6 @@ export default {
         </div>
       </template>
     </div>
-
-    <!-- Note view, right-side drawer (100vw full-page on mobile - see
-         .drawer-panel's mobile override in style.css): plain view, edit,
-         or delete. viewingNote lives in store.js so Sidebar.js's calendar
-         Favorites list can open the same drawer. -->
-    <DrawerShell v-if="store.loadingNoteView || store.viewingNote" title="Note" wide @close="closeNote">
-      <div v-if="store.loadingNoteView" class="loading-row"><span class="spinner"></span> Loading…</div>
-
-      <template v-else-if="store.viewingNote">
-        <div v-if="editingNote" class="note-editor">
-          <input type="text" v-model="editNoteTitle" class="note-editor-title-input" placeholder="Note title" />
-          <div class="row" style="gap:8px; align-items:center; margin-bottom:8px;">
-            <input type="text" v-model="editNoteTags" class="note-editor-title-input" style="flex:1; margin-bottom:0;" placeholder="Tags (comma separated)" />
-            <ColorPicker v-model="editNoteColor" />
-          </div>
-          <div class="note-editor-toolbar">
-            <button class="icon-btn" title="Preview" :class="{active: editNotePreview}" @click="editNotePreview = !editNotePreview" v-html="icons.eye"></button>
-            <div class="note-help-wrap">
-              <button class="icon-btn" title="Markdown syntax help" @click="editNoteHelp = !editNoteHelp">?</button>
-              <div v-if="editNoteHelp" class="note-help-popover" v-html="MARKDOWN_HELP"></div>
-            </div>
-          </div>
-          <textarea v-if="!editNotePreview" v-model="editNoteContent" class="note-editor-textarea" rows="10"></textarea>
-          <div v-else class="markdown-body note-editor-preview" v-html="renderMarkdown(editNoteContent)"></div>
-          <div class="drawer-actions">
-            <button class="btn" :disabled="savingNoteEdit || !editNoteTitle.trim()" @click="saveNoteEdit">
-              <span v-if="savingNoteEdit" class="spinner"></span>{{ savingNoteEdit ? ' Saving…' : 'Save' }}
-            </button>
-            <button class="btn secondary" :disabled="savingNoteEdit" @click="cancelEditNote">Cancel</button>
-          </div>
-        </div>
-
-        <div v-else class="note-detail">
-          <div class="note-detail-header">
-            <h2>{{ store.viewingNote.title }}</h2>
-            <div class="note-detail-actions">
-              <button class="icon-btn" title="Edit" @click="startEditNote" v-html="icons.edit"></button>
-              <button class="icon-btn favorite-btn" :class="{active: store.viewingNote.is_favorited}" title="Favorite"
-                      @click="store.toggleNoteFavorite(store.viewingNote.id)"
-                      v-html="store.viewingNote.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
-              <button class="icon-btn" title="Delete" @click="removeNote" v-html="icons.trash"></button>
-            </div>
-          </div>
-          <div class="note-detail-date">{{ fmtDateShort(store.viewingNote.created_at) }}</div>
-          <div v-if="store.viewingNote.tags && store.viewingNote.tags.length" class="tag-row">
-            <span class="tag" v-for="t in store.viewingNote.tags" :key="t">{{ t }}</span>
-          </div>
-          <hr class="note-divider" />
-          <div class="markdown-body" v-html="renderMarkdown(store.viewingNote.content)"></div>
-        </div>
-      </template>
-    </DrawerShell>
   </div>
   `,
 };

@@ -77,6 +77,7 @@ export default {
     const newNoteContent = ref("");
     const newNoteTags = ref("");
     const newNoteColor = ref("");
+    const newNoteTemplateId = ref("");
     const savingNewNote = ref(false);
 
     function toggleNewNote() {
@@ -86,6 +87,16 @@ export default {
       newNoteContent.value = "";
       newNoteTags.value = "";
       newNoteColor.value = "";
+      newNoteTemplateId.value = "";
+    }
+
+    // 從已存的 template 帶入草稿內容(見 Manage 畫面)- 只是單次複製,筆記
+    // 不會跟這個 template 保持關聯。
+    function applyNoteTemplate() {
+      const t = store.noteTemplates.find((x) => x.id === Number(newNoteTemplateId.value));
+      if (!t) return;
+      newNoteContent.value = t.content;
+      if (t.tags && t.tags.length) newNoteTags.value = t.tags.join(", ");
     }
 
     async function saveNewNote() {
@@ -270,8 +281,8 @@ export default {
       store, icons, renderMarkdown, MARKDOWN_HELP,
       sortMode, pickTagFilter, allNotesByTag,
       fmtDateShort, fmtDateLabel,
-      showNewNote, newNoteTitle, newNoteContent, newNoteTags, newNoteColor, savingNewNote,
-      toggleNewNote, saveNewNote,
+      showNewNote, newNoteTitle, newNoteContent, newNoteTags, newNoteColor, newNoteTemplateId, savingNewNote,
+      toggleNewNote, saveNewNote, applyNoteTemplate,
       editingNote, editNoteTitle, editNoteContent, editNoteTags, editNoteColor, editNotePreview, editNoteHelp, savingNoteEdit,
       openNote, closeNote, startEditNote, cancelEditNote, saveNoteEdit, removeNote,
       showTemplateForm, tmName, tmContent, tmTags, tmSaving,
@@ -409,6 +420,10 @@ export default {
           <TagPicker v-model="newNoteTags" :options="store.noteTags" />
           <ColorPicker v-model="newNoteColor" />
         </div>
+        <select v-if="store.noteTemplates.length" class="note-template-select" v-model="newNoteTemplateId" @change="applyNoteTemplate">
+          <option value="" disabled>Apply template…</option>
+          <option v-for="t in store.noteTemplates" :key="t.id" :value="t.id">{{ t.name }}</option>
+        </select>
         <textarea v-model="newNoteContent" class="note-editor-textarea" rows="8" placeholder="Write your note in Markdown…"></textarea>
         <button class="btn" :disabled="savingNewNote || !newNoteTitle.trim()" @click="saveNewNote">
           <span v-if="savingNewNote" class="spinner"></span>{{ savingNewNote ? ' Saving…' : 'Save note' }}
