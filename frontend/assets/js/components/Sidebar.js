@@ -53,13 +53,6 @@ export default {
       if (notesFavoritesOpen.value) await store.loadFavoritedNotes();
     }
 
-    // 日曆頁現在只做資料呈現,不在頁面內開筆記,點了直接跳去 Notes 頁顯示
-    // (Notes 頁自己的 Favorites 清單則不用跳頁,已經在 Notes 頁了)。
-    function goToNote(id) {
-      store.view = "notes";
-      store.openNoteView(id);
-    }
-
     // "2026-08-05" -> "2026/8/5"
     function fmtDateLabel(dateStr) {
       const [y, m, d] = dateStr.split("-").map(Number);
@@ -160,6 +153,7 @@ export default {
     function openTemplateManage() {
       store.templateManageOpen = true;
       store.viewingTemplate = null;
+      store.closeSidebar(); // 手機版:選了就收起左抽屜
     }
 
     async function startFolderRename(group) {
@@ -233,7 +227,6 @@ export default {
       notesFavoritesOpen,
       homeIconOk,
       toggleNotesFavorites,
-      goToNote,
       fmtDateLabel,
       addingMemo,
       newMemoText,
@@ -436,7 +429,7 @@ export default {
         <template v-if="notesFavoritesOpen">
           <template v-for="group in store.favoritedNotesByDate" :key="group.date">
             <div class="notes-favorites-date">{{ fmtDateLabel(group.date) }}</div>
-            <div v-for="n in group.notes" :key="n.id" class="session-item" @click="goToNote(n.id)">
+            <div v-for="n in group.notes" :key="n.id" class="session-item" @click="store.openNoteView(n.id)">
               <span v-if="n.color" class="note-color-dot" :class="'note-color-' + n.color"></span>
               <span class="session-title">{{ n.title }}</span>
             </div>

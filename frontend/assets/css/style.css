@@ -1767,6 +1767,22 @@ textarea {
   margin-top: 0;
 }
 
+/* Notes/Conversations/Wiki 小標題現在可以點,會跳去對應的頁面(見
+   CalendarView.js)- 只是換個顏色示意可以點,不用完整按鈕外框。 */
+.day-detail-heading.clickable:hover {
+  color: var(--accent);
+}
+
+/* 日曆頁點筆記/wiki 項目時,內容直接顯示在本頁這個框裡(不跳頁、不開抽屜),
+   右上角一個 X 關閉 - 見 CalendarView.js 的 openNote/openWikiPreview。 */
+.cal-inline-preview {
+  border: 1px solid var(--border);
+  background: var(--white);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
 .day-card {
   background: var(--white);
   border: none;
@@ -1798,13 +1814,14 @@ textarea {
 /* Notes */
 
 /* Note viewer/editor - shown directly in the Notes page's main panel now
-   (see NotesView.js), not in a side drawer anymore (Calendar page dropped
-   its own note drawer too - it's view-only now, clicking a note there
-   jumps to this page instead). Sized to 60% of the viewport width instead
-   of stretching to fill the whole main panel. */
+   (see NotesView.js), not in a side drawer anymore. 100% of the main
+   panel's own width (both mobile and desktop) - a vw-based width ignored
+   the sidebar's 280px offset and the mobile drawer's overlay behavior, so
+   it ended up looking like a narrow column stuck in a corner instead of
+   actually filling the panel. */
 .note-detail,
 .note-editor {
-  width: 60vw;
+  width: 100%;
 }
 
 /* Note drawer (see DrawerShell's `wide` prop) - text is +10% over the
@@ -1990,6 +2007,15 @@ textarea {
 .note-editor-textarea:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+/* 只有筆記本身的內容欄位要放大字體(不是 Manage 畫面的 template 內容,
+   也不是其他輸入框),而且只在電腦版 - 見 NotesView.js 的新增/編輯筆記
+   textarea。13px * 1.3 ≈ 17px。 */
+@media (min-width: 769px) {
+  .note-write-textarea {
+    font-size: 17px;
+  }
 }
 
 .note-editor-preview {
@@ -2848,6 +2874,16 @@ select {
 
   .sidebar-backdrop {
     display: block;
+  }
+
+  /* 手機版標題旁邊的 Edit/Favorite/Delete/Close 那排 icon 按鈕會把標題
+     擠到只剩窄窄一條,幾個字就換行 - 讓標題自己獨占一整行,按鈕排到下一行。 */
+  .note-detail-header {
+    flex-wrap: wrap;
+  }
+
+  .note-detail-header h2 {
+    flex: 1 1 100%;
   }
 
   .sidebar {

@@ -335,7 +335,12 @@ export const store = reactive({
   async loadNewsSources() {
     this.newsSources = await api.get("/api/news/sources");
     if (!this.newsSelectedSource && this.newsSources.length) {
-      this.newsSelectedSource = this.newsSources[0].key;
+      // 預設選置頂的來源;如果有好幾個置頂,選最新建立的那個 - 來源沒有
+      // created_at 欄位,但 SOURCES 清單(見 news_sources.py)本來就是照
+      // 加入順序排列,所以陣列裡「置頂裡面排最後面的」就是最新加入的。
+      // 完全沒人置頂的話,退回原本的邏輯(取第一個)。
+      const pinned = this.newsSources.filter((s) => s.pinned);
+      this.newsSelectedSource = pinned.length ? pinned[pinned.length - 1].key : this.newsSources[0].key;
     }
   },
 
@@ -446,6 +451,7 @@ export const store = reactive({
 
   async openNoteView(id) {
     this.templateManageOpen = false; // Notes 頁的 Manage 畫面優先權比較高,開筆記前要先關掉,不然筆記畫面不會顯示出來
+    this.sidebarOpen = false; // 手機版:選了就收起左抽屜
     this.loadingNoteView = true;
     this.viewingNote = null;
     try {

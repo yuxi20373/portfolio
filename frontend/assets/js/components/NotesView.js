@@ -367,7 +367,7 @@ export default {
               <div v-if="editNoteHelp" class="note-help-popover" v-html="MARKDOWN_HELP"></div>
             </div>
           </div>
-          <textarea v-if="!editNotePreview" v-model="editNoteContent" class="note-editor-textarea" rows="10"></textarea>
+          <textarea v-if="!editNotePreview" v-model="editNoteContent" class="note-editor-textarea note-write-textarea" rows="10"></textarea>
           <div v-else class="markdown-body note-editor-preview" v-html="renderMarkdown(editNoteContent)"></div>
           <div class="drawer-actions">
             <button class="btn" :disabled="savingNoteEdit || !editNoteTitle.trim()" @click="saveNoteEdit">
@@ -424,7 +424,7 @@ export default {
           <option value="" disabled>Apply template…</option>
           <option v-for="t in store.noteTemplates" :key="t.id" :value="t.id">{{ t.name }}</option>
         </select>
-        <textarea v-model="newNoteContent" class="note-editor-textarea" rows="8" placeholder="Write your note in Markdown…"></textarea>
+        <textarea v-model="newNoteContent" class="note-editor-textarea note-write-textarea" rows="8" placeholder="Write your note in Markdown…"></textarea>
         <button class="btn" :disabled="savingNewNote || !newNoteTitle.trim()" @click="saveNewNote">
           <span v-if="savingNewNote" class="spinner"></span>{{ savingNewNote ? ' Saving…' : 'Save note' }}
         </button>

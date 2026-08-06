@@ -2,6 +2,7 @@ const { ref, computed, onMounted } = window.Vue;
 import { api } from "../api.js";
 import { store } from "../store.js";
 import { icons } from "../icons.js";
+import { renderMarkdown } from "../markdown.js";
 
 export default {
   setup() {
@@ -47,6 +48,8 @@ export default {
 
     async function selectDay(dateStr) {
       selectedDate.value = dateStr;
+      store.closeNoteView();
+      closeWikiPreview();
       weatherLoading.value = true;
       weather.value = null;
 
@@ -73,20 +76,36 @@ export default {
       refresh();
     }
 
+    // 點 Notes/Conversations/Wiki 的小標題才會跳轉頁面;點裡面個別項目
+    // 只在本頁顯示內容(下面的 inline preview),不跳走 - 除了對話,因為
+    // 對話沒辦法在這種小面板裡合理呈現,點了還是直接跳去 Chat 頁選中它。
     function openSession(id) {
       store.view = "chat";
       store.selectSession(id);
     }
 
-    function openWikiEntry(id) {
-      store.view = "wiki";
-      store.selectWikiEntry(id);
+    // Wiki 內容預覽 - 獨立的本地狀態,不跟 WikiView.js 共用 store.currentWikiEntry,
+    // 這樣在日曆頁預覽不會動到 Wiki 頁自己原本開著的項目。
+    const viewingWikiEntry = ref(null);
+    const loadingWikiEntry = ref(false);
+
+    async function openWikiPreview(id) {
+      loadingWikiEntry.value = true;
+      viewingWikiEntry.value = null;
+      try {
+        viewingWikiEntry.value = await api.get(`/api/wiki/${id}`);
+      } finally {
+        loadingWikiEntry.value = false;
+      }
     }
 
-    // 日曆頁只做資料呈現,不在頁面內開筆記 - 點了直接跳去 Notes 頁顯示,跟
-    // openSession/openWikiEntry 同一套邏輯。
+    function closeWikiPreview() {
+      viewingWikiEntry.value = null;
+    }
+
+    // 筆記預覽沿用 store.viewingNote(跟 Notes 頁、Sidebar 的 Favorites
+    // 清單共用同一份狀態,見 store.openNoteView/closeNoteView)。
     function openNote(id) {
-      store.view = "notes";
       store.openNoteView(id);
     }
 
@@ -119,8 +138,9 @@ export default {
       year, month, counts, monthNotes, cells,
       selectedDate, daySessions, dayWikiEntries, dayNotes,
       weather, weatherLoading, weatherHasData,
-      icons,
-      refresh, selectDay, prevMonth, nextMonth, openSession, openWikiEntry, openNote,
+      viewingWikiEntry, loadingWikiEntry, openWikiPreview, closeWikiPreview,
+      icons, renderMarkdown,
+      refresh, selectDay, prevMonth, nextMonth, openSession, openNote,
       fmtCompact,
     };
   },
@@ -168,14 +188,31 @@ export default {
       </div>
     </div>
 
+    <!-- 跟 .day-detail 平行(不放在它裡面)- 從側欄 Favorites 點筆記時,
+         就算還沒選任何一天(selectedDate 是 null),預覽還是要顯示得出來。 -->
+    <div v-if="store.loadingNoteView || store.viewingNote" class="cal-inline-preview">
+      <div v-if="store.loadingNoteView" class="loading-row"><span class="spinner"></span> Loading…</div>
+      <template v-else>
+        <div class="note-detail-header">
+          <h2>{{ store.viewingNote.title }}</h2>
+          <button class="icon-btn" title="Close" @click="store.closeNoteView()" v-html="icons.close"></button>
+        </div>
+        <div v-if="store.viewingNote.tags && store.viewingNote.tags.length" class="tag-row">
+          <span class="tag" v-for="t in store.viewingNote.tags" :key="t">{{ t }}</span>
+        </div>
+        <hr class="note-divider" />
+        <div class="markdown-body" v-html="renderMarkdown(store.viewingNote.content)"></div>
+      </template>
+    </div>
+
     <div v-if="selectedDate" class="day-detail">
-      <h3 class="day-detail-heading">Notes</h3>
+      <h3 class="day-detail-heading clickable" title="Open the Notes page" @click="store.view = 'notes'">Notes</h3>
       <div v-if="!dayNotes.length" class="hint">No notes on this day</div>
       <div v-for="n in dayNotes" :key="n.id" class="day-card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id)">
         <div class="day-card-title">{{ n.title }}</div>
       </div>
 
-      <h3 class="day-detail-heading">Conversations</h3>
+      <h3 class="day-detail-heading clickable" title="Open Chat" @click="store.view = 'chat'">Conversations</h3>
       <div v-if="!daySessions.length" class="hint">No conversations created on this day</div>
       <div v-for="s in daySessions" :key="s.id" class="day-card clickable" @click="openSession(s.id)">
         <div class="day-card-title">{{ s.title }}</div>
@@ -183,9 +220,21 @@ export default {
       </div>
 
       <template v-if="dayWikiEntries.length">
-        <h3 class="day-detail-heading">Wiki</h3>
-        <div v-for="w in dayWikiEntries" :key="w.id" class="day-card clickable" @click="openWikiEntry(w.id)">
+        <h3 class="day-detail-heading clickable" title="Open the Wiki page" @click="store.view = 'wiki'">Wiki</h3>
+        <div v-for="w in dayWikiEntries" :key="w.id" class="day-card clickable" @click="openWikiPreview(w.id)">
           <div class="day-card-title">{{ w.title }}</div>
+        </div>
+
+        <div v-if="loadingWikiEntry || viewingWikiEntry" class="cal-inline-preview">
+          <div v-if="loadingWikiEntry" class="loading-row"><span class="spinner"></span> Loading…</div>
+          <template v-else>
+            <div class="note-detail-header">
+              <h2>{{ viewingWikiEntry.title }}</h2>
+              <button class="icon-btn" title="Close" @click="closeWikiPreview" v-html="icons.close"></button>
+            </div>
+            <hr class="note-divider" />
+            <div class="markdown-body" v-html="renderMarkdown(viewingWikiEntry.content)"></div>
+          </template>
         </div>
       </template>
     </div>
