@@ -3,6 +3,8 @@ from .chat import ChatSession, ChatMessage
 from .wiki import WikiEntry, WikiFolder
 from .note import Note, NoteTemplate, NoteTag, MemoItem
 from .news import NewsArticle, NewsScrapeLog, NewsSourceSetting
+from .emoji import CustomEmoji
+from .event import CalendarEvent
 
 __all__ = [
     "User",
@@ -18,4 +20,6 @@ __all__ = [
     "NewsArticle",
     "NewsScrapeLog",
     "NewsSourceSetting",
+    "CustomEmoji",
+    "CalendarEvent",
 ]

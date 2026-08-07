@@ -154,6 +154,7 @@ export default {
       store.templateManageOpen = true;
       store.viewingTemplate = null;
       store.closeSidebar(); // 手機版:選了就收起左抽屜
+      if (!store.customEmoji.length) store.loadCustomEmoji();
     }
 
     async function startFolderRename(group) {

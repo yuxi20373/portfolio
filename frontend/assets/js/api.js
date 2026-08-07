@@ -33,6 +33,17 @@ export const api = {
     });
     return handleResponse(r);
   },
+  // multipart/form-data (file uploads) - no Content-Type header here on
+  // purpose, the browser sets it (with the right boundary) from the
+  // FormData body itself; setting it manually breaks the upload.
+  async postForm(path, formData) {
+    const r = await fetch(BASE + path, {
+      method: "POST",
+      headers: authHeaders(),
+      body: formData,
+    });
+    return handleResponse(r);
+  },
   async patch(path, body) {
     const r = await fetch(BASE + path, {
       method: "PATCH",

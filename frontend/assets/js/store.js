@@ -1,5 +1,6 @@
 const { reactive } = window.Vue;
 import { api } from "./api.js";
+import { setCustomEmoji } from "./markdown.js";
 
 // dateStr -> [note, ...] - shared by favoritedNotesByDate and allNotesByDate
 // below, both of which render as a date-grouped, separator-divided list
@@ -90,6 +91,7 @@ export const store = reactive({
   allNotes: [], // standalone Notes page's full list (see loadAllNotes)
   notesTagFilter: null, // tag name | null - standalone Notes page's filter
   memoItems: [], // quick scratchpad checklist, shown in the Notes page's sidebar
+  customEmoji: [], // [{id, shortcode, url}] - 自訂 :shortcode: emoji,見 loadCustomEmoji
 
   // news
   newsSources: [], // [{key, name, enabled, pinned}, ...]
@@ -445,13 +447,16 @@ export const store = reactive({
     this.newsArticleSiblings = [];
   },
 
-  // --- Notes: shared viewing drawer (CalendarView.js renders it, both its
-  // own day-detail list and Sidebar.js's calendar-branch Favorites list open
-  // notes through these same two functions) ---
+  // --- Notes: shared viewing state (NotesView.js's note-detail, Calendar
+  // page's inline preview, and Sidebar.js's Favorites lists all open notes
+  // through these same functions) ---
 
-  async openNoteView(id) {
+  viewingNoteSiblings: [], // 開這則筆記時所在的那個群組(同一天或同一個 tag)的 id 順序,給 stepNote 左右瀏覽用
+
+  async openNoteView(id, siblingIds) {
     this.templateManageOpen = false; // Notes 頁的 Manage 畫面優先權比較高,開筆記前要先關掉,不然筆記畫面不會顯示出來
     this.sidebarOpen = false; // 手機版:選了就收起左抽屜
+    this.viewingNoteSiblings = siblingIds || [id];
     this.loadingNoteView = true;
     this.viewingNote = null;
     try {
@@ -461,8 +466,19 @@ export const store = reactive({
     }
   },
 
+  // delta: -1 (prev) | 1 (next) - stays within viewingNoteSiblings, no wraparound
+  async stepNote(delta) {
+    if (!this.viewingNote) return;
+    const ids = this.viewingNoteSiblings;
+    const idx = ids.indexOf(this.viewingNote.id);
+    const nextIdx = idx + delta;
+    if (nextIdx < 0 || nextIdx >= ids.length) return;
+    await this.openNoteView(ids[nextIdx], ids);
+  },
+
   closeNoteView() {
     this.viewingNote = null;
+    this.viewingNoteSiblings = [];
   },
 
   // payload: {title, content, tags?, color?, date?} - date omitted defaults
@@ -593,6 +609,42 @@ export const store = reactive({
     this.memoItems = this.memoItems.filter((m) => m.id !== id);
   },
 
+  // --- 自訂 :shortcode: emoji(見 markdown.js 的 :shortcode: 語法)---
+
+  async loadCustomEmoji() {
+    this.customEmoji = await api.get("/api/emoji");
+    // markdown.js 自己存一份 shortcode -> 完整圖片網址的對照表,渲染時才不用
+    // 每個元件都各自傳一次 customEmoji 進去。網址要補上 API_BASE_URL,因為
+    // <img src> 不像 api.js 的 fetch 會自動補這個 base。
+    const base = window.API_BASE_URL || "";
+    setCustomEmoji(this.customEmoji.map((e) => ({ shortcode: e.shortcode, url: base + e.url })));
+  },
+
+  async uploadCustomEmoji(shortcode, file) {
+    const formData = new FormData();
+    formData.append("shortcode", shortcode);
+    formData.append("file", file);
+    await api.postForm("/api/emoji", formData);
+    await this.loadCustomEmoji();
+  },
+
+  async deleteCustomEmoji(id) {
+    await api.del(`/api/emoji/${id}`);
+    await this.loadCustomEmoji();
+  },
+
+  // --- Calendar 頁的 Event/Reminder(見 CalendarView.js)- 清單本身是
+  // CalendarView.js 自己局部管理(跟 counts/monthNotes 同一套,只有這頁用得
+  // 到,不需要放全域 store 狀態),這裡只提供 create/delete 兩個 API 呼叫。 ---
+
+  async createEvent(payload) {
+    return await api.post("/api/events", payload);
+  },
+
+  async deleteEvent(id) {
+    await api.del(`/api/events/${id}`);
+  },
+
   // --- Mobile sidebar drawer ---
 
   toggleSidebar() {
@@ -679,6 +731,7 @@ export const store = reactive({
     this.wikiFolders = [];
     this.favoritedNotes = [];
     this.viewingNote = null;
+    this.viewingNoteSiblings = [];
     this.noteTemplates = [];
     this.viewingTemplate = null;
     this.templateManageOpen = false;

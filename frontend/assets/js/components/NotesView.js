@@ -10,9 +10,12 @@ const MARKDOWN_HELP = `
   <div><code>**bold**</code> &nbsp; <code>*italic*</code></div>
   <div><code>- list item</code></div>
   <div><code>1. numbered item</code></div>
+  <div><code>- [ ] todo</code> &nbsp; <code>- [x] done</code></div>
   <div><code>[text](url)</code></div>
   <div><code>\`inline code\`</code></div>
   <div><code>&gt; quote</code></div>
+  <div><code>:smile:</code> emoji(自訂的也可以,見 Manage 頁的 Emoji Manage)</div>
+  <div><code>==peach:text==</code> / <code>==sage:text==</code> / <code>==sky:text==</code> 底色</div>
 `;
 
 export default {
@@ -27,6 +30,18 @@ export default {
     async function pickTagFilter(tag) {
       store.notesTagFilter = store.notesTagFilter === tag ? null : tag;
       await store.loadAllNotes();
+    }
+
+    // notesTagFilter 是套在 store.allNotes 上的伺服器端篩選,By Date/By Tag
+    // 兩種排序都是從同一份 allNotes 算出來的 - 切走 By Tag 模式時如果篩選還
+    // 留著,By Date 就會漏掉沒套用那個 tag 的筆記,看起來像當天筆記不見了。
+    // 所以離開 By Tag 就把篩選清掉。
+    async function setSortMode(mode) {
+      sortMode.value = mode;
+      if (mode !== "tag" && store.notesTagFilter) {
+        store.notesTagFilter = null;
+        await store.loadAllNotes();
+      }
     }
 
     // Only meaningful in "tag" sort mode - buckets every note under each of
@@ -127,10 +142,23 @@ export default {
     const editNoteHelp = ref(false);
     const savingNoteEdit = ref(false);
 
-    async function openNote(id) {
+    async function openNote(id, siblingIds) {
       editingNote.value = false;
-      await store.openNoteView(id);
+      await store.openNoteView(id, siblingIds);
     }
+
+    // 左右瀏覽同一組(同一天或同一個 tag,看 store.viewingNoteSiblings 是哪個
+    // list 傳進來的)裡的上一則/下一則。
+    const canStepNotePrev = computed(() => {
+      const ids = store.viewingNoteSiblings;
+      return !!store.viewingNote && ids.indexOf(store.viewingNote.id) > 0;
+    });
+    const canStepNoteNext = computed(() => {
+      const ids = store.viewingNoteSiblings;
+      if (!store.viewingNote) return false;
+      const idx = ids.indexOf(store.viewingNote.id);
+      return idx >= 0 && idx < ids.length - 1;
+    });
 
     function closeNote() {
       store.closeNoteView();
@@ -277,17 +305,53 @@ export default {
       }
     }
 
+    // --- Emoji Manage(同一個 Manage 畫面裡的第三個區塊)- 上傳自訂
+    // :shortcode: emoji,見 markdown.js。圖片本身的縮圖處理在後端做
+    // (routers/emoji.py),前端只負責選檔案跟叫 API。---
+
+    const newEmojiShortcode = ref("");
+    const newEmojiFile = ref(null);
+    const uploadingEmoji = ref(false);
+
+    function onEmojiFileChange(e) {
+      newEmojiFile.value = e.target.files[0] || null;
+    }
+
+    async function uploadEmoji() {
+      const shortcode = newEmojiShortcode.value.trim().toLowerCase();
+      if (!shortcode || !newEmojiFile.value) return;
+      uploadingEmoji.value = true;
+      try {
+        await store.uploadCustomEmoji(shortcode, newEmojiFile.value);
+        store.showNotice("Emoji created");
+        newEmojiShortcode.value = "";
+        newEmojiFile.value = null;
+      } catch (err) {
+        store.showNotice("Couldn't create emoji", "error");
+      } finally {
+        uploadingEmoji.value = false;
+      }
+    }
+
+    async function deleteEmojiRow(e) {
+      if (confirm(`Delete emoji ":${e.shortcode}:"?`)) {
+        await store.deleteCustomEmoji(e.id);
+      }
+    }
+
     return {
       store, icons, renderMarkdown, MARKDOWN_HELP,
-      sortMode, pickTagFilter, allNotesByTag,
+      sortMode, setSortMode, pickTagFilter, allNotesByTag,
       fmtDateShort, fmtDateLabel,
       showNewNote, newNoteTitle, newNoteContent, newNoteTags, newNoteColor, newNoteTemplateId, savingNewNote,
       toggleNewNote, saveNewNote, applyNoteTemplate,
       editingNote, editNoteTitle, editNoteContent, editNoteTags, editNoteColor, editNotePreview, editNoteHelp, savingNoteEdit,
       openNote, closeNote, startEditNote, cancelEditNote, saveNoteEdit, removeNote,
+      canStepNotePrev, canStepNoteNext,
       showTemplateForm, tmName, tmContent, tmTags, tmSaving,
       startNewTemplate, editTemplateRow, cancelTemplateForm, saveTemplate, deleteTemplateRow, closeTemplateManage,
       promptNewTag, renameTag, deleteTagRow,
+      newEmojiShortcode, uploadingEmoji, onEmojiFileChange, uploadEmoji, deleteEmojiRow,
     };
   },
   template: `
@@ -328,6 +392,27 @@ export default {
                 <button class="mini-icon-btn" title="Delete" @click="deleteTagRow(t)">×</button>
               </span>
               <div v-if="!store.noteTags.length" class="empty-state">No tags yet</div>
+            </div>
+          </div>
+
+          <div class="manage-section">
+            <div class="manage-section-header">
+              <h3>Emoji Manage</h3>
+            </div>
+            <div class="emoji-upload-row">
+              <input type="text" v-model="newEmojiShortcode" class="note-editor-title-input" style="margin-bottom:0; max-width:160px;" placeholder="shortcode" />
+              <input type="file" accept="image/*" @change="onEmojiFileChange" />
+              <button class="btn" :disabled="uploadingEmoji || !newEmojiShortcode.trim()" @click="uploadEmoji">
+                <span v-if="uploadingEmoji" class="spinner"></span>{{ uploadingEmoji ? ' Uploading…' : 'Add emoji' }}
+              </button>
+            </div>
+            <div class="emoji-grid">
+              <div v-for="e in store.customEmoji" :key="e.id" class="emoji-card">
+                <button class="mini-icon-btn emoji-card-delete" title="Delete" @click="deleteEmojiRow(e)">×</button>
+                <img class="emoji-card-img" :src="e.url" alt="" />
+                <div class="emoji-card-code">:{{ e.shortcode }}:</div>
+              </div>
+              <div v-if="!store.customEmoji.length" class="empty-state">No custom emoji yet</div>
             </div>
           </div>
         </template>
@@ -381,6 +466,8 @@ export default {
           <div class="note-detail-header">
             <h2>{{ store.viewingNote.title }}</h2>
             <div class="note-detail-actions">
+              <button class="icon-btn" title="Previous" :disabled="!canStepNotePrev" @click="store.stepNote(-1)" v-html="icons.chevronLeft"></button>
+              <button class="icon-btn" title="Next" :disabled="!canStepNoteNext" @click="store.stepNote(1)" v-html="icons.chevronRight"></button>
               <button class="icon-btn" title="Edit" @click="startEditNote" v-html="icons.edit"></button>
               <button class="icon-btn favorite-btn" :class="{active: store.viewingNote.is_favorited}" title="Favorite"
                       @click="store.toggleNoteFavorite(store.viewingNote.id)"
@@ -404,10 +491,10 @@ export default {
       <div class="wiki-toolbar">
         <button class="icon-btn" title="New note" @click="toggleNewNote" v-html="icons.plus"></button>
         <div class="notes-tabs">
-          <button class="notes-tab" :class="{active: sortMode === 'date'}" @click="sortMode = 'date'">
+          <button class="notes-tab" :class="{active: sortMode === 'date'}" @click="setSortMode('date')">
             <span v-html="icons.calendar"></span> By Date
           </button>
-          <button class="notes-tab" :class="{active: sortMode === 'tag'}" @click="sortMode = 'tag'">
+          <button class="notes-tab" :class="{active: sortMode === 'tag'}" @click="setSortMode('tag')">
             <span v-html="icons.tag"></span> By Tag
           </button>
         </div>
@@ -438,7 +525,7 @@ export default {
         <template v-for="group in store.allNotesByDate" :key="group.date">
           <div class="notes-date-sep">{{ fmtDateLabel(group.date) }}</div>
           <div class="notes-grid">
-            <div v-for="n in group.notes" :key="n.id" class="card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id)">
+            <div v-for="n in group.notes" :key="n.id" class="card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id, group.notes.map(x => x.id))">
               <div class="day-card-title">{{ n.title }}</div>
               <div v-if="n.tags && n.tags.length" class="tag-row">
                 <span class="tag tag-solid" v-for="t in n.tags" :key="t">{{ t }}</span>
@@ -451,7 +538,7 @@ export default {
         <template v-for="group in allNotesByTag" :key="group.tag">
           <div class="notes-date-sep">{{ group.tag }}</div>
           <div class="notes-grid">
-            <div v-for="n in group.notes" :key="n.id" class="card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id)">
+            <div v-for="n in group.notes" :key="n.id" class="card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id, group.notes.map(x => x.id))">
               <div class="day-card-title">{{ n.title }}</div>
             </div>
           </div>

@@ -14,6 +14,7 @@ import Notice from "./components/Notice.js";
 function loadAccountData() {
   store.loadSessions();
   store.loadModels();
+  store.loadCustomEmoji(); // markdown 到處都會用到 :shortcode:,登入後就先載入一次
 }
 
 const App = {

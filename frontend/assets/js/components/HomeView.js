@@ -3,6 +3,14 @@ import { store } from "../store.js";
 import { icons } from "../icons.js";
 import { api } from "../api.js";
 
+// Emoji/Markdown 語法說明(見首頁右上角的笑臉按鈕),跟 NotesView.js 的
+// MARKDOWN_HELP 是同一批語法,寫在這裡是因為那個彈窗只有首頁需要。
+const EMOJI_HELP = `
+  <div><code>:smile:</code> emoji(內建約 200 個常用的;自訂的在 Notes 頁「Manage → Emoji Manage」上傳)</div>
+  <div><code>- [ ] todo</code> &nbsp; <code>- [x] done</code> 勾選格</div>
+  <div><code>==peach:text==</code> / <code>==sage:text==</code> / <code>==sky:text==</code> 底色</div>
+`;
+
 // Decorative stickers around the hero (see .home-sticker-wrap/.home-sticker
 // in style.css). x/y/size are numbers (percent / px) rather than
 // pre-built CSS strings so handlePointerMove below can do distance math
@@ -73,6 +81,8 @@ export default {
       e.target.style.display = "none";
       e.target.parentElement.classList.add("home-hero-fallback");
     }
+
+    const showEmojiHelp = ref(false);
 
     // Today's weather - NOT fetched automatically. Nothing about the hero
     // or the weather float changes until the user clicks the weather float
@@ -169,6 +179,8 @@ export default {
       pushOffsets,
       handlePointerMove,
       resetPush,
+      showEmojiHelp,
+      EMOJI_HELP,
     };
   },
   template: `
@@ -225,6 +237,13 @@ export default {
           <img :src="store.img(store.theme === 'dark' ? 'dark.png' : 'light.png')" alt="" @error="onImgError" @load="onImgLoad" />
         </span>
       </button>
+
+      <button class="home-float corner-emoji-help" title="Emoji & Markdown syntax" @click="showEmojiHelp = !showEmojiHelp">
+        <span class="home-float-inner">
+          <span class="home-float-fallback" v-html="icons.smile"></span>
+        </span>
+      </button>
+      <div v-if="showEmojiHelp" class="corner-emoji-help-popover" v-html="EMOJI_HELP"></div>
     </div>
 
     <div class="home-cta">

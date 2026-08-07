@@ -1,15 +1,19 @@
 """Lets the user tweak an existing wiki entry's headings/content via a
 conversational, propose-then-confirm flow:
 
-- propose_adjustment() drafts a revision based on a natural-language
-  instruction WITHOUT saving it, optionally starting from a not-yet-saved
-  draft from an earlier round in the same session (so the user can keep
-  refining before committing anything).
+- propose_adjustment() runs a web search for the entry's topic + the user's
+  instruction, then drafts a revision (informed by those results) WITHOUT
+  saving it, optionally starting from a not-yet-saved draft from an earlier
+  round in the same session (so the user can keep refining before
+  committing anything).
 - apply_adjustment() commits an already-approved draft to the database.
 
-Kept separate from wiki_search_service.py, which is strictly additive -
-this is the only path allowed to remove or restructure existing content,
-and only because the user explicitly asked for it.
+Like wiki_search_service.py, this now defaults to additive edits - existing
+content should be kept and supplemented rather than removed. Unlike that
+service, this one CAN still remove/shorten content, but only when the
+user's instruction explicitly asks for it; anything else (expand, add
+detail, refresh with current info, reorganize) must not drop existing
+material. See ADJUST_SYSTEM_PROMPT for the exact policy given to the model.
 """
 
 from datetime import datetime
@@ -20,6 +24,7 @@ from ... import models
 from ...integrations.llm_client import simple_completion
 from ...prompts.wiki_adjust import ADJUST_SYSTEM_PROMPT
 from ...utils.json_extract import extract_json_and_body
+from ...agent.tools.web_search import web_search as web_search_tool
 
 
 def propose_adjustment(
@@ -38,11 +43,16 @@ def propose_adjustment(
     content = base_content if base_content is not None else entry.content
     summary = base_summary if base_summary is not None else entry.summary
 
+    # 用條目標題+使用者指令當搜尋詞,補充最新/更詳細的資訊給模型參考 - 模型
+    # 不是照單全收,只在跟指令相關時才會拿來用(見 ADJUST_SYSTEM_PROMPT)。
+    search_results = web_search_tool.invoke({"query": f"{entry.title} {instruction}"})
+
     user_prompt = (
         f"Entry title: {entry.title}\n"
         f"Entry type: {entry.entry_type}\n"
         f"Current content:\n{content}\n\n"
-        f"User's instruction:\n{instruction}"
+        f"User's instruction:\n{instruction}\n\n"
+        f"Web search results (for background/supplementary info - only use what's actually relevant to the instruction):\n{search_results}"
     )
 
     raw = simple_completion(

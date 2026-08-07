@@ -15,11 +15,11 @@ export default {
     const month = ref(initial.getMonth() + 1);
     const counts = ref({});
     const monthNotes = ref({}); // dateStr -> [title, ...]
+    const monthEvents = ref({}); // dateStr -> [{title, kind}, ...] - already excludes expired reminders, see routers/calendar.py
 
     const selectedDate = ref(null);
-    const daySessions = ref([]);
-    const dayWikiEntries = ref([]);
     const dayNotes = ref([]);
+    const dayEvents = ref([]); // [{id, title, kind, remind_at, expired}, ...] - includes expired reminders (grayed out, sorted last)
 
     // --- Weather (Taichung) for the selected day, top-right corner ---
     const weather = ref(null);
@@ -43,13 +43,14 @@ export default {
       const res = await api.get(`/api/calendar?year=${year.value}&month=${month.value}`);
       counts.value = res.counts || {};
       monthNotes.value = res.notes || {};
+      monthEvents.value = res.events || {};
       if (selectedDate.value) await selectDay(selectedDate.value);
     }
 
     async function selectDay(dateStr) {
       selectedDate.value = dateStr;
       store.closeNoteView();
-      closeWikiPreview();
+      cancelAddEvent();
       weatherLoading.value = true;
       weather.value = null;
 
@@ -58,9 +59,8 @@ export default {
         api.get(`/api/weather?date=${dateStr}`).catch(() => null),
       ]);
 
-      daySessions.value = dayRes.sessions || [];
-      dayWikiEntries.value = dayRes.wiki_entries || [];
       dayNotes.value = dayRes.notes || [];
+      dayEvents.value = dayRes.events || [];
       weather.value = weatherRes;
       weatherLoading.value = false;
     }
@@ -76,51 +76,79 @@ export default {
       refresh();
     }
 
-    // 點 Notes/Conversations/Wiki 的小標題才會跳轉頁面;點裡面個別項目
-    // 只在本頁顯示內容(下面的 inline preview),不跳走 - 除了對話,因為
-    // 對話沒辦法在這種小面板裡合理呈現,點了還是直接跳去 Chat 頁選中它。
-    function openSession(id) {
-      store.view = "chat";
-      store.selectSession(id);
-    }
-
-    // Wiki 內容預覽 - 獨立的本地狀態,不跟 WikiView.js 共用 store.currentWikiEntry,
-    // 這樣在日曆頁預覽不會動到 Wiki 頁自己原本開著的項目。
-    const viewingWikiEntry = ref(null);
-    const loadingWikiEntry = ref(false);
-
-    async function openWikiPreview(id) {
-      loadingWikiEntry.value = true;
-      viewingWikiEntry.value = null;
-      try {
-        viewingWikiEntry.value = await api.get(`/api/wiki/${id}`);
-      } finally {
-        loadingWikiEntry.value = false;
-      }
-    }
-
-    function closeWikiPreview() {
-      viewingWikiEntry.value = null;
-    }
-
+    // 點 Notes 的小標題才會跳轉頁面;點裡面個別筆記只在本頁顯示內容(下面
+    // 的 inline preview),不跳走。日曆頁不再顯示對話/wiki 了(只做資料
+    // 呈現,集中看 Notes)。
     // 筆記預覽沿用 store.viewingNote(跟 Notes 頁、Sidebar 的 Favorites
     // 清單共用同一份狀態,見 store.openNoteView/closeNoteView)。
     function openNote(id) {
       store.openNoteView(id);
     }
 
-    // Compact "2026/7/24 AM 11:05" style timestamp
-    function fmtCompact(d) {
-      const dt = new Date(d);
-      const y = dt.getFullYear();
-      const m = dt.getMonth() + 1;
-      const day = dt.getDate();
+    // --- Event / Reminder ---
+
+    const showAddEvent = ref(false);
+    const newEventTitle = ref("");
+    const newEventKind = ref("event"); // "event" | "reminder"
+    const newEventTime = ref(""); // "HH:MM",只有 reminder 用得到
+    const savingEvent = ref(false);
+
+    function toggleAddEvent() {
+      showAddEvent.value = !showAddEvent.value;
+      newEventTitle.value = "";
+      newEventKind.value = "event";
+      newEventTime.value = "";
+    }
+
+    function cancelAddEvent() {
+      showAddEvent.value = false;
+    }
+
+    async function saveEvent() {
+      if (!newEventTitle.value.trim() || !selectedDate.value) return;
+      if (newEventKind.value === "reminder" && !newEventTime.value) return;
+      savingEvent.value = true;
+      try {
+        const payload = {
+          title: newEventTitle.value.trim(),
+          kind: newEventKind.value,
+          event_date: selectedDate.value,
+        };
+        if (newEventKind.value === "reminder") {
+          payload.remind_at = `${selectedDate.value}T${newEventTime.value}:00`;
+        }
+        await store.createEvent(payload);
+        store.showNotice(newEventKind.value === "event" ? "Event created" : "Reminder created");
+        toggleAddEvent();
+        await refresh(); // 月曆格子的小方框跟當天清單都要跟著更新
+      } catch (err) {
+        store.showNotice("Couldn't create", "error");
+      } finally {
+        savingEvent.value = false;
+      }
+    }
+
+    async function removeEvent(id) {
+      if (confirm("Delete this?")) {
+        await store.deleteEvent(id);
+        await refresh();
+      }
+    }
+
+    // 還沒過期的(event 跟未過期 reminder)排前面,過期的 reminder 沉到最下面。
+    const sortedDayEvents = computed(() => {
+      return [...dayEvents.value].sort((a, b) => (a.expired === b.expired ? 0 : a.expired ? 1 : -1));
+    });
+
+    // "2026-08-10T14:30:00" -> "2:30 PM"
+    function fmtEventTime(iso) {
+      const dt = new Date(iso);
       let h = dt.getHours();
       const ampm = h >= 12 ? "PM" : "AM";
       h = h % 12;
       if (h === 0) h = 12;
       const min = String(dt.getMinutes()).padStart(2, "0");
-      return `${y}/${m}/${day} ${ampm} ${h}:${min}`;
+      return `${h}:${min} ${ampm}`;
     }
 
     const weatherHasData = computed(() => !!weather.value && weather.value.will_rain !== null);
@@ -135,13 +163,13 @@ export default {
 
     return {
       store,
-      year, month, counts, monthNotes, cells,
-      selectedDate, daySessions, dayWikiEntries, dayNotes,
+      year, month, counts, monthNotes, monthEvents, cells,
+      selectedDate, dayNotes, dayEvents, sortedDayEvents,
       weather, weatherLoading, weatherHasData,
-      viewingWikiEntry, loadingWikiEntry, openWikiPreview, closeWikiPreview,
       icons, renderMarkdown,
-      refresh, selectDay, prevMonth, nextMonth, openSession, openNote,
-      fmtCompact,
+      refresh, selectDay, prevMonth, nextMonth, openNote,
+      showAddEvent, newEventTitle, newEventKind, newEventTime, savingEvent,
+      toggleAddEvent, cancelAddEvent, saveEvent, removeEvent, fmtEventTime,
     };
   },
   template: `
@@ -184,6 +212,10 @@ export default {
             <div v-for="t in monthNotes[cell.dateStr].slice(0, 2)" :key="t" class="cal-note-chip">{{ t }}</div>
             <div v-if="monthNotes[cell.dateStr].length > 2" class="cal-note-more">...</div>
           </div>
+          <div class="cal-cell-notes" v-if="monthEvents[cell.dateStr] && monthEvents[cell.dateStr].length">
+            <div v-for="(ev, idx) in monthEvents[cell.dateStr].slice(0, 2)" :key="idx" class="cal-event-chip" :class="ev.kind">{{ ev.title }}</div>
+            <div v-if="monthEvents[cell.dateStr].length > 2" class="cal-note-more">...</div>
+          </div>
         </template>
       </div>
     </div>
@@ -212,31 +244,32 @@ export default {
         <div class="day-card-title">{{ n.title }}</div>
       </div>
 
-      <h3 class="day-detail-heading clickable" title="Open Chat" @click="store.view = 'chat'">Conversations</h3>
-      <div v-if="!daySessions.length" class="hint">No conversations created on this day</div>
-      <div v-for="s in daySessions" :key="s.id" class="day-card clickable" @click="openSession(s.id)">
-        <div class="day-card-title">{{ s.title }}</div>
-        <div class="day-card-meta">Last Message: {{ fmtCompact(s.last_message_at) }}</div>
+      <h3 class="day-detail-heading row between">
+        <span>Events</span>
+        <button class="icon-btn" title="Add event/reminder" @click="toggleAddEvent" v-html="icons.plus"></button>
+      </h3>
+
+      <div v-if="showAddEvent" class="note-editor">
+        <input type="text" v-model="newEventTitle" class="note-editor-title-input" placeholder="Title" />
+        <div class="row" style="gap:16px; margin-bottom:8px;">
+          <label class="row" style="gap:4px;"><input type="radio" value="event" v-model="newEventKind" /> Event</label>
+          <label class="row" style="gap:4px;"><input type="radio" value="reminder" v-model="newEventKind" /> Reminder</label>
+        </div>
+        <input v-if="newEventKind === 'reminder'" type="time" v-model="newEventTime" class="note-editor-title-input" style="max-width:160px;" />
+        <div class="drawer-actions">
+          <button class="btn" :disabled="savingEvent || !newEventTitle.trim() || (newEventKind === 'reminder' && !newEventTime)" @click="saveEvent">
+            <span v-if="savingEvent" class="spinner"></span>{{ savingEvent ? ' Saving…' : 'Save' }}
+          </button>
+          <button class="btn secondary" :disabled="savingEvent" @click="cancelAddEvent">Cancel</button>
+        </div>
       </div>
 
-      <template v-if="dayWikiEntries.length">
-        <h3 class="day-detail-heading clickable" title="Open the Wiki page" @click="store.view = 'wiki'">Wiki</h3>
-        <div v-for="w in dayWikiEntries" :key="w.id" class="day-card clickable" @click="openWikiPreview(w.id)">
-          <div class="day-card-title">{{ w.title }}</div>
-        </div>
-
-        <div v-if="loadingWikiEntry || viewingWikiEntry" class="cal-inline-preview">
-          <div v-if="loadingWikiEntry" class="loading-row"><span class="spinner"></span> Loading…</div>
-          <template v-else>
-            <div class="note-detail-header">
-              <h2>{{ viewingWikiEntry.title }}</h2>
-              <button class="icon-btn" title="Close" @click="closeWikiPreview" v-html="icons.close"></button>
-            </div>
-            <hr class="note-divider" />
-            <div class="markdown-body" v-html="renderMarkdown(viewingWikiEntry.content)"></div>
-          </template>
-        </div>
-      </template>
+      <div v-if="!sortedDayEvents.length && !showAddEvent" class="hint">No events on this day</div>
+      <div v-for="ev in sortedDayEvents" :key="ev.id" class="event-card" :class="[ev.kind, {expired: ev.expired}]">
+        <span class="event-card-title">{{ ev.title }}</span>
+        <span v-if="ev.kind === 'reminder' && ev.remind_at" class="event-card-time">{{ fmtEventTime(ev.remind_at) }}</span>
+        <button class="mini-icon-btn" title="Delete" @click="removeEvent(ev.id)">×</button>
+      </div>
     </div>
   </div>
   `,
