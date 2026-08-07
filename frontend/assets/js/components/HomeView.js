@@ -2,14 +2,12 @@ const { ref, computed } = window.Vue;
 import { store } from "../store.js";
 import { icons } from "../icons.js";
 import { api } from "../api.js";
+import { EMOJI_CATEGORIES, LINE_ICON_MAP } from "../emoji.js";
 
-// Emoji/Markdown 語法說明(見首頁右上角的笑臉按鈕),跟 NotesView.js 的
-// MARKDOWN_HELP 是同一批語法,寫在這裡是因為那個彈窗只有首頁需要。
-const EMOJI_HELP = `
-  <div><code>:smile:</code> emoji(內建約 200 個常用的;自訂的在 Notes 頁「Manage → Emoji Manage」上傳)</div>
-  <div><code>- [ ] todo</code> &nbsp; <code>- [x] done</code> 勾選格</div>
-  <div><code>==peach:text==</code> / <code>==sage:text==</code> / <code>==sky:text==</code> 底色</div>
-`;
+// Emoji/Markdown 語法說明(見首頁右上角的笑臉按鈕)彈出的是一個大視窗,不是
+// 小 popover - 裡面除了語法規則,還會把 EMOJI_CATEGORIES/LINE_ICON_MAP 全部
+// 代號列出來(含使用者自己上傳的自訂 emoji),點一下代號會複製 :code: 到
+// 剪貼簿,方便直接貼進筆記,不用自己手打。
 
 // Decorative stickers around the hero (see .home-sticker-wrap/.home-sticker
 // in style.css). x/y/size are numbers (percent / px) rather than
@@ -83,6 +81,42 @@ export default {
     }
 
     const showEmojiHelp = ref(false);
+    const emojiFilter = ref("");
+    const copiedCode = ref("");
+
+    function openEmojiHelp() {
+      showEmojiHelp.value = true;
+      if (!store.customEmoji.length) store.loadCustomEmoji();
+    }
+
+    const emojiCategories = computed(() => {
+      const cats = [{ name: "Icons", icon: true, items: LINE_ICON_MAP }, ...EMOJI_CATEGORIES];
+      if (store.customEmoji.length) {
+        cats.unshift({
+          name: "Custom",
+          custom: true,
+          items: Object.fromEntries(store.customEmoji.map((e) => [e.shortcode, e.url])),
+        });
+      }
+      const f = emojiFilter.value.trim().toLowerCase();
+      if (!f) return cats;
+      return cats
+        .map((c) => ({ ...c, items: Object.fromEntries(Object.entries(c.items).filter(([code]) => code.toLowerCase().includes(f))) }))
+        .filter((c) => Object.keys(c.items).length);
+    });
+
+    let copiedTimer = null;
+    async function copyEmojiCode(code) {
+      const token = `:${code}:`;
+      try {
+        await navigator.clipboard.writeText(token);
+        copiedCode.value = code;
+        clearTimeout(copiedTimer);
+        copiedTimer = setTimeout(() => { copiedCode.value = ""; }, 1200);
+      } catch {
+        // 剪貼簿權限被擋(例如非 HTTPS)就算了,使用者還是看得到代號本身。
+      }
+    }
 
     // Today's weather - NOT fetched automatically. Nothing about the hero
     // or the weather float changes until the user clicks the weather float
@@ -180,7 +214,11 @@ export default {
       handlePointerMove,
       resetPush,
       showEmojiHelp,
-      EMOJI_HELP,
+      openEmojiHelp,
+      emojiFilter,
+      emojiCategories,
+      copiedCode,
+      copyEmojiCode,
     };
   },
   template: `
@@ -238,16 +276,44 @@ export default {
         </span>
       </button>
 
-      <button class="home-float corner-emoji-help" title="Emoji & Markdown syntax" @click="showEmojiHelp = !showEmojiHelp">
+      <button class="home-float corner-emoji-help" title="Emoji & Markdown syntax" @click="openEmojiHelp">
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="icons.smile"></span>
         </span>
       </button>
-      <div v-if="showEmojiHelp" class="corner-emoji-help-popover" v-html="EMOJI_HELP"></div>
     </div>
 
     <div class="home-cta">
       <button class="btn" @click="goChat">Start chatting →</button>
+    </div>
+
+    <div v-if="showEmojiHelp" class="emoji-help-overlay" @click.self="showEmojiHelp = false">
+      <div class="emoji-help-modal">
+        <div class="emoji-help-modal-header">
+          <h3>Emoji &amp; Markdown syntax</h3>
+          <button class="icon-btn" title="Close" @click="showEmojiHelp = false" v-html="icons.close"></button>
+        </div>
+        <div class="emoji-help-modal-body">
+          <div class="emoji-help-syntax">
+            <div><code>- [ ] todo</code> &nbsp; <code>- [x] done</code> 勾選格</div>
+            <div><code>::b:text::</code> 藍 &nbsp; <code>::g:text::</code> 綠 &nbsp; <code>::p:text::</code> 橘 底色</div>
+            <div><code>:shortcode:</code> 下面點一下代號就會複製到剪貼簿,貼進筆記即可</div>
+          </div>
+          <input type="text" v-model="emojiFilter" class="emoji-picker-search" placeholder="Search shortcode…" />
+          <div v-for="cat in emojiCategories" :key="cat.name" class="emoji-picker-cat">
+            <div class="emoji-picker-cat-name">{{ cat.name }}</div>
+            <div class="emoji-picker-grid">
+              <button v-for="(val, code) in cat.items" :key="code" type="button" class="emoji-help-item" :class="{copied: copiedCode === code}" :title="'Copy :' + code + ':'" @click="copyEmojiCode(code)">
+                <img v-if="cat.custom" :src="val" alt="" class="emoji-picker-item-img" />
+                <span v-else-if="cat.icon" class="emoji-picker-item-icon" v-html="icons[val]"></span>
+                <span v-else class="emoji-help-glyph">{{ val }}</span>
+                <span class="emoji-help-code">:{{ code }}:</span>
+              </button>
+            </div>
+          </div>
+          <div v-if="!emojiCategories.length" class="empty-state">No match</div>
+        </div>
+      </div>
     </div>
   </div>
   `,

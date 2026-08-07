@@ -1,9 +1,10 @@
-const { ref, computed } = window.Vue;
+const { ref, computed, nextTick } = window.Vue;
 import { store } from "../store.js";
 import { icons } from "../icons.js";
 import { renderMarkdown } from "../markdown.js";
 import ColorPicker from "./ColorPicker.js";
 import TagPicker from "./TagPicker.js";
+import EmojiPicker from "./EmojiPicker.js";
 
 const MARKDOWN_HELP = `
   <div><code># Heading</code></div>
@@ -14,12 +15,12 @@ const MARKDOWN_HELP = `
   <div><code>[text](url)</code></div>
   <div><code>\`inline code\`</code></div>
   <div><code>&gt; quote</code></div>
-  <div><code>:smile:</code> emoji(自訂的也可以,見 Manage 頁的 Emoji Manage)</div>
-  <div><code>==peach:text==</code> / <code>==sage:text==</code> / <code>==sky:text==</code> 底色</div>
+  <div><code>:smile:</code> emoji(內建/自訂/單線條 icon,按旁邊的笑臉圖示直接點選插入)</div>
+  <div><code>::b:text::</code> 藍 &nbsp; <code>::g:text::</code> 綠 &nbsp; <code>::p:text::</code> 橘 底色</div>
 `;
 
 export default {
-  components: { ColorPicker, TagPicker },
+  components: { ColorPicker, TagPicker, EmojiPicker },
   setup() {
     // 這頁預設一律顯示全部筆記列表;側欄的「Template Manage」按鈕
     // (Sidebar.js 的 'notes' 分支)會把整個主畫面切換成 Template Manage 畫面
@@ -140,7 +141,29 @@ export default {
     const editNoteColor = ref("");
     const editNotePreview = ref(false);
     const editNoteHelp = ref(false);
+    const showEmojiPicker = ref(false);
+    const noteContentTextarea = ref(null);
     const savingNoteEdit = ref(false);
+
+    // EmojiPicker.js 只負責選 shortcode,插入游標位置這件事要靠 textarea 的
+    // DOM ref 自己算(selectionStart/End),插入完把游標移到新插入文字後面,
+    // 不然預設會整個跳回文字最前面。
+    function insertEmojiCode(code) {
+      const token = `:${code}:`;
+      const el = noteContentTextarea.value;
+      if (!el) {
+        editNoteContent.value += token;
+      } else {
+        const start = el.selectionStart ?? editNoteContent.value.length;
+        const end = el.selectionEnd ?? start;
+        editNoteContent.value = editNoteContent.value.slice(0, start) + token + editNoteContent.value.slice(end);
+        nextTick(() => {
+          el.focus();
+          el.selectionStart = el.selectionEnd = start + token.length;
+        });
+      }
+      showEmojiPicker.value = false;
+    }
 
     async function openNote(id, siblingIds) {
       editingNote.value = false;
@@ -346,6 +369,7 @@ export default {
       showNewNote, newNoteTitle, newNoteContent, newNoteTags, newNoteColor, newNoteTemplateId, savingNewNote,
       toggleNewNote, saveNewNote, applyNoteTemplate,
       editingNote, editNoteTitle, editNoteContent, editNoteTags, editNoteColor, editNotePreview, editNoteHelp, savingNoteEdit,
+      showEmojiPicker, noteContentTextarea, insertEmojiCode,
       openNote, closeNote, startEditNote, cancelEditNote, saveNoteEdit, removeNote,
       canStepNotePrev, canStepNoteNext,
       showTemplateForm, tmName, tmContent, tmTags, tmSaving,
@@ -448,11 +472,15 @@ export default {
           <div class="note-editor-toolbar">
             <button class="icon-btn" title="Preview" :class="{active: editNotePreview}" @click="editNotePreview = !editNotePreview" v-html="icons.eye"></button>
             <div class="note-help-wrap">
+              <button class="icon-btn" title="Insert emoji" @click="showEmojiPicker = !showEmojiPicker" v-html="icons.smile"></button>
+              <EmojiPicker v-if="showEmojiPicker" @pick="insertEmojiCode" />
+            </div>
+            <div class="note-help-wrap">
               <button class="icon-btn" title="Markdown syntax help" @click="editNoteHelp = !editNoteHelp">?</button>
               <div v-if="editNoteHelp" class="note-help-popover" v-html="MARKDOWN_HELP"></div>
             </div>
           </div>
-          <textarea v-if="!editNotePreview" v-model="editNoteContent" class="note-editor-textarea note-write-textarea" rows="10"></textarea>
+          <textarea v-if="!editNotePreview" ref="noteContentTextarea" v-model="editNoteContent" class="note-editor-textarea note-write-textarea" rows="10"></textarea>
           <div v-else class="markdown-body note-editor-preview" v-html="renderMarkdown(editNoteContent)"></div>
           <div class="drawer-actions">
             <button class="btn" :disabled="savingNoteEdit || !editNoteTitle.trim()" @click="saveNoteEdit">
