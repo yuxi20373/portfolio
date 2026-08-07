@@ -31,9 +31,11 @@ function applyEmoji(text) {
   });
 }
 
-// ::b:文字:: / ::g:文字:: / ::p:文字:: - 底色語法,固定三個顏色(藍/綠/橘,
-// 底色沿用跟筆記顏色同一套 sky/sage/peach,視覺上保持一致)。例如 ::b:重要::。
-const HIGHLIGHT_COLORS = { b: "sky", g: "sage", p: "peach" };
+// ::b:文字:: / ::g:文字:: / ::p:文字:: - 底色語法,固定三個顏色(藍/綠/橘)。
+// 例如 ::b:重要::。顏色是獨立定義(見 style.css 的 --highlight-*),沒有沿用
+// note-color-sky/sage 那組筆記卡片底色 - 那組是設計給大面積底色用的極淡色調,
+// 拿來當一小段文字的底色反而太淡、跟白色背景幾乎分不出來。
+const HIGHLIGHT_COLORS = { b: "blue", g: "green", p: "orange" };
 const HIGHLIGHT_RE = /::(b|g|p):(.+?)::/g;
 
 function applyHighlight(text) {

@@ -95,6 +95,10 @@ export default {
     const newNoteColor = ref("");
     const newNoteTemplateId = ref("");
     const savingNewNote = ref(false);
+    const newNotePreview = ref(false);
+    const newNoteHelp = ref(false);
+    const showEmojiPickerNew = ref(false);
+    const newNoteContentTextarea = ref(null);
 
     function toggleNewNote() {
       store.viewingTemplate = null; // the "+" always means "add a note", regardless of what's showing
@@ -104,6 +108,28 @@ export default {
       newNoteTags.value = "";
       newNoteColor.value = "";
       newNoteTemplateId.value = "";
+      newNotePreview.value = false;
+      newNoteHelp.value = false;
+      showEmojiPickerNew.value = false;
+    }
+
+    // 跟 insertEmojiCode 是同一套邏輯,只是這個是給「新增筆記」表單的
+    // textarea 用(兩個表單是分開的 ref,不能共用同一個游標位置)。
+    function insertEmojiCodeNew(code) {
+      const token = `:${code}:`;
+      const el = newNoteContentTextarea.value;
+      if (!el) {
+        newNoteContent.value += token;
+      } else {
+        const start = el.selectionStart ?? newNoteContent.value.length;
+        const end = el.selectionEnd ?? start;
+        newNoteContent.value = newNoteContent.value.slice(0, start) + token + newNoteContent.value.slice(end);
+        nextTick(() => {
+          el.focus();
+          el.selectionStart = el.selectionEnd = start + token.length;
+        });
+      }
+      showEmojiPickerNew.value = false;
     }
 
     // 從已存的 template 帶入草稿內容(見 Manage 畫面)- 只是單次複製,筆記
@@ -367,6 +393,7 @@ export default {
       sortMode, setSortMode, pickTagFilter, allNotesByTag,
       fmtDateShort, fmtDateLabel,
       showNewNote, newNoteTitle, newNoteContent, newNoteTags, newNoteColor, newNoteTemplateId, savingNewNote,
+      newNotePreview, newNoteHelp, showEmojiPickerNew, newNoteContentTextarea, insertEmojiCodeNew,
       toggleNewNote, saveNewNote, applyNoteTemplate,
       editingNote, editNoteTitle, editNoteContent, editNoteTags, editNoteColor, editNotePreview, editNoteHelp, savingNoteEdit,
       showEmojiPicker, noteContentTextarea, insertEmojiCode,
@@ -539,7 +566,19 @@ export default {
           <option value="" disabled>Apply template…</option>
           <option v-for="t in store.noteTemplates" :key="t.id" :value="t.id">{{ t.name }}</option>
         </select>
-        <textarea v-model="newNoteContent" class="note-editor-textarea note-write-textarea" rows="8" placeholder="Write your note in Markdown…"></textarea>
+        <div class="note-editor-toolbar">
+          <button class="icon-btn" title="Preview" :class="{active: newNotePreview}" @click="newNotePreview = !newNotePreview" v-html="icons.eye"></button>
+          <div class="note-help-wrap">
+            <button class="icon-btn" title="Insert emoji" @click="showEmojiPickerNew = !showEmojiPickerNew" v-html="icons.smile"></button>
+            <EmojiPicker v-if="showEmojiPickerNew" @pick="insertEmojiCodeNew" />
+          </div>
+          <div class="note-help-wrap">
+            <button class="icon-btn" title="Markdown syntax help" @click="newNoteHelp = !newNoteHelp">?</button>
+            <div v-if="newNoteHelp" class="note-help-popover" v-html="MARKDOWN_HELP"></div>
+          </div>
+        </div>
+        <textarea v-if="!newNotePreview" ref="newNoteContentTextarea" v-model="newNoteContent" class="note-editor-textarea note-write-textarea" rows="8" placeholder="Write your note in Markdown…"></textarea>
+        <div v-else class="markdown-body note-editor-preview" v-html="renderMarkdown(newNoteContent)"></div>
         <button class="btn" :disabled="savingNewNote || !newNoteTitle.trim()" @click="saveNewNote">
           <span v-if="savingNewNote" class="spinner"></span>{{ savingNewNote ? ' Saving…' : 'Save note' }}
         </button>

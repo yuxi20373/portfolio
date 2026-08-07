@@ -19,6 +19,11 @@
      當邊框才看得清楚(note-color 那組是設計給大面積底色用的淺色調)。 */
   --event-blue: #7FB8E0;
   --reminder-green: #86C58A;
+  /* ::b::/::g::/::p:: 底色語法專用(見 markdown.js)- 同樣比 note-color-*
+     深一點,拿來當一小段文字的底色才看得清楚。 */
+  --highlight-blue: #A9D4F5;
+  --highlight-green: #BFE0AE;
+  --highlight-orange: #F3D9C4;
 }
 
 /* Dark mode - toggled via <html data-theme="dark">, see store.js
@@ -41,6 +46,9 @@
   --note-color-sky: #243A4A;
   --event-blue: #5B8FC0;
   --reminder-green: #5FA868;
+  --highlight-blue: #3D6B94;
+  --highlight-green: #3F7A46;
+  --highlight-orange: #6B4A30;
 }
 
 body,
@@ -1622,23 +1630,24 @@ textarea {
   stroke: currentColor;
 }
 
-/* ==顏色:文字== 底色語法(見 markdown.js)- 沿用跟筆記顏色同一套
-   peach/sage/sky。 */
+/* ::b::/::g::/::p:: 底色語法(見 markdown.js)- 藍/綠/橘,獨立定義的顏色
+   (見 :root 的 --highlight-*),不是拿 note-color-sky/sage 那組極淡色調來
+   用(當一小段文字底色會太淡看不清楚)。 */
 .md-highlight {
   padding: 0 3px;
   border-radius: 3px;
 }
 
-.md-highlight-peach {
-  background: var(--note-color-peach);
+.md-highlight-blue {
+  background: var(--highlight-blue);
 }
 
-.md-highlight-sage {
-  background: var(--note-color-sage);
+.md-highlight-green {
+  background: var(--highlight-green);
 }
 
-.md-highlight-sky {
-  background: var(--note-color-sky);
+.md-highlight-orange {
+  background: var(--highlight-orange);
 }
 
 .markdown-body h1,
