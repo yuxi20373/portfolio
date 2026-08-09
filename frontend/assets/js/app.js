@@ -9,6 +9,7 @@ import WikiView from "./components/WikiView.js";
 import CalendarView from "./components/CalendarView.js";
 import NewsView from "./components/NewsView.js";
 import NotesView from "./components/NotesView.js";
+import HotelSearchView from "./components/HotelSearchView.js";
 import Notice from "./components/Notice.js";
 
 function loadAccountData() {
@@ -18,7 +19,7 @@ function loadAccountData() {
 }
 
 const App = {
-  components: { LoginView, Sidebar, HomeView, ChatView, WikiView, CalendarView, NewsView, NotesView, Notice },
+  components: { LoginView, Sidebar, HomeView, ChatView, WikiView, CalendarView, NewsView, NotesView, HotelSearchView, Notice },
   setup() {
     store.initTheme();
     if (store.loggedIn) loadAccountData();
@@ -76,6 +77,7 @@ const App = {
     <CalendarView v-else-if="store.view === 'calendar'" />
     <NotesView v-else-if="store.view === 'notes'" />
     <NewsView v-else-if="store.view === 'news'" />
+    <HotelSearchView v-else-if="store.view === 'hotels'" />
 
     <img class="corner-mascot" :src="cornerSrc" alt="" @error="onCornerImgError" @load="onCornerImgLoad" />
 

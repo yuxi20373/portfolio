@@ -19,6 +19,61 @@ function groupNotesByDate(notes) {
   return order.map((date) => ({ date, notes: groups[date] }));
 }
 
+// Hotel search 輪詢用的 timer id - 純模組層級變數,不用放進 reactive store
+// (跟 UI 無關,只是拿來在使用者發起新搜尋時取消掉舊的輪詢)。
+let hotelPollTimer = null;
+
+function _stopHotelPoll() {
+  clearTimeout(hotelPollTimer);
+  hotelPollTimer = null;
+}
+
+function _scheduleHotelPoll(store, jobId) {
+  hotelPollTimer = setTimeout(async () => {
+    // 使用者發起了新搜尋(換掉了 hotelSearchJob),這次輪詢已經過期了。
+    if (!store.hotelSearchJob || store.hotelSearchJob.id !== jobId) return;
+    try {
+      const job = await api.get(`/api/hotel-search/searches/${jobId}`);
+      if (!store.hotelSearchJob || store.hotelSearchJob.id !== jobId) return;
+      store.hotelSearchJob = job;
+      if (job.status === "done" || job.status === "failed") {
+        store.hotelSearchPolling = false;
+      } else {
+        _scheduleHotelPoll(store, jobId);
+      }
+    } catch (e) {
+      store.hotelSearchPolling = false;
+      store.hotelSearchError = e.message;
+    }
+  }, 3000);
+}
+
+let airbnbPollTimer = null;
+
+function _stopAirbnbPoll() {
+  clearTimeout(airbnbPollTimer);
+  airbnbPollTimer = null;
+}
+
+function _scheduleAirbnbPoll(store, jobId) {
+  airbnbPollTimer = setTimeout(async () => {
+    if (!store.airbnbSearchJob || store.airbnbSearchJob.id !== jobId) return;
+    try {
+      const job = await api.get(`/api/airbnb-search/searches/${jobId}`);
+      if (!store.airbnbSearchJob || store.airbnbSearchJob.id !== jobId) return;
+      store.airbnbSearchJob = job;
+      if (job.status === "done" || job.status === "failed") {
+        store.airbnbSearchPolling = false;
+      } else {
+        _scheduleAirbnbPoll(store, jobId);
+      }
+    } catch (e) {
+      store.airbnbSearchPolling = false;
+      store.airbnbSearchError = e.message;
+    }
+  }, 3000);
+}
+
 export const store = reactive({
   // login: token has no expiry (see backend/app/models/auth.py) - it's
   // valid until logout() explicitly deletes it, so staying logged in
@@ -92,6 +147,21 @@ export const store = reactive({
   notesTagFilter: null, // tag name | null - standalone Notes page's filter
   memoItems: [], // quick scratchpad checklist, shown in the Notes page's sidebar
   customEmoji: [], // [{id, shortcode, url}] - 自訂 :shortcode: emoji,見 loadCustomEmoji
+
+  // hotel search(外部 AsiaYo 爬蟲服務,見 HotelSearchView.js)
+  hotelCities: [], // [{slug, name}, ...]
+  hotelCitiesLoading: false,
+  hotelCitiesError: null,
+  hotelSearchJob: null, // 目前這次搜尋的 job 物件(每次輪詢會整個換新)
+  hotelSearchPolling: false,
+  hotelSearchError: null,
+
+  // Airbnb search(外部 Bright Data 爬蟲服務,見 HotelSearchView.js)- 跟上面
+  // AsiaYo 那組是同一個頁面的兩個分頁,狀態分開存是因為兩邊 job 的欄位/id
+  // 完全不共通,硬併在一起反而更亂。
+  airbnbSearchJob: null,
+  airbnbSearchPolling: false,
+  airbnbSearchError: null,
 
   // news
   newsSources: [], // [{key, name, enabled, pinned}, ...]
@@ -643,6 +713,68 @@ export const store = reactive({
 
   async deleteEvent(id) {
     await api.del(`/api/events/${id}`);
+  },
+
+  // --- Hotel search(外部 AsiaYo 爬蟲服務,見 backend/app/routers/hotel_search.py
+  // - 這裡呼叫的是我們自己後端的 proxy,不是直接打外部服務,API key 留在
+  // 後端,前端不會碰到)。建立 job 後是非同步爬蟲,要輪詢 GET 直到
+  // status 變成 "done"/"failed"。 ---
+
+  async loadHotelCities() {
+    if (this.hotelCities.length || this.hotelCitiesLoading) return;
+    this.hotelCitiesLoading = true;
+    this.hotelCitiesError = null;
+    try {
+      this.hotelCities = await api.get("/api/hotel-search/cities");
+    } catch (e) {
+      // 沒有這段的話,失敗時 dropdown 會整個空著,只剩一個 disabled 的
+      // placeholder,看起來就像「城市選不了」但完全沒提示是哪裡壞了。
+      this.hotelCitiesError = e.message;
+    } finally {
+      this.hotelCitiesLoading = false;
+    }
+  },
+
+  async startHotelSearch(citySlug, checkInDate, checkOutDate) {
+    _stopHotelPoll();
+    this.hotelSearchError = null;
+    this.hotelSearchJob = null;
+    this.hotelSearchPolling = true;
+    try {
+      const job = await api.post("/api/hotel-search/searches", {
+        city_slug: citySlug,
+        check_in_date: checkInDate,
+        check_out_date: checkOutDate,
+      });
+      this.hotelSearchJob = job;
+      if (job.status === "done" || job.status === "failed") {
+        this.hotelSearchPolling = false;
+      } else {
+        _scheduleHotelPoll(this, job.id);
+      }
+    } catch (e) {
+      this.hotelSearchPolling = false;
+      this.hotelSearchError = e.message;
+    }
+  },
+
+  async startAirbnbSearch(params) {
+    _stopAirbnbPoll();
+    this.airbnbSearchError = null;
+    this.airbnbSearchJob = null;
+    this.airbnbSearchPolling = true;
+    try {
+      const job = await api.post("/api/airbnb-search/searches", params);
+      this.airbnbSearchJob = job;
+      if (job.status === "done" || job.status === "failed") {
+        this.airbnbSearchPolling = false;
+      } else {
+        _scheduleAirbnbPoll(this, job.id);
+      }
+    } catch (e) {
+      this.airbnbSearchPolling = false;
+      this.airbnbSearchError = e.message;
+    }
   },
 
   // --- Mobile sidebar drawer ---

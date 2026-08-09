@@ -78,6 +78,26 @@ class Settings(BaseSettings):
     # header (e.g. an external uptime pinger). Leave blank to allow anyone.
     news_cron_secret: str = ""
 
+    # --- AsiaYo hotel-search proxy (separately-deployed external service,
+    # see app/routers/hotel_search.py) - the API key is kept server-side and
+    # never shipped to the frontend bundle. ---
+    asiayo_api_base_url: str = "https://asiayo-scraper-api.onrender.com"
+    asiayo_api_key: str = ""
+
+    # --- Bright Data Airbnb "discover by location" scraper (Dataset API) -
+    # see app/routers/airbnb_search.py. No built-in caching on their end
+    # (unlike AsiaYo above), so this app caches results itself to stay
+    # within the free tier. ---
+    brightdata_api_token: str = ""
+    brightdata_airbnb_dataset_id: str = "gd_ld7ll037kqy322v05"
+    # 每次搜尋(不管搜幾個地點)總共抓幾筆,平均分給每個地點當各自的
+    # limit_per_input(見 routers/airbnb_search.py 的 _trigger_body)- 免費
+    # 額度 5K records/月,200 筆/次代表大概可以搜 25 次。
+    airbnb_search_total_limit: int = 200
+    # 同樣的地點組合+日期+人數,這麼多天內都直接吃快取(資料庫裡的舊結果),
+    # 不重新觸發 Bright Data。
+    airbnb_search_cache_days: int = 7
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

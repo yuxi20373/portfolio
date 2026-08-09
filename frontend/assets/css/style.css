@@ -314,6 +314,7 @@ textarea {
 
 .icon-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 12px;
   border-bottom: 1px solid var(--border);
@@ -1319,6 +1320,295 @@ textarea {
   position: absolute;
   top: 4px;
   right: 4px;
+}
+
+/* HotelSearchView.js - 測試/串接用的訂房搜尋頁面。 */
+.hotel-search-panel {
+  padding: 20px 28px;
+  overflow-y: auto;
+}
+
+.hotel-source-tabs {
+  display: inline-flex;
+  margin-bottom: 14px;
+}
+
+.hotel-search-field-wide {
+  flex: 0 1 240px;
+}
+
+.hotel-search-field-wide input {
+  width: 100%;
+}
+
+.hotel-locations-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.hotel-locations-row textarea {
+  width: 200px;
+  resize: vertical;
+}
+
+/* 縣市勾選 popover(見 HotelSearchView.js)的觸發按鈕在這一排的最右邊,
+   .note-help-popover 預設 left:0 會往右展開,直接超出頁面右邊界看不到 -
+   這裡改成往左展開,並給個最小寬度,不然「台北市」這種三個字會被擠到斷行。 */
+.hotel-locations-row .note-help-popover {
+  left: auto;
+  right: 0;
+  min-width: 130px;
+}
+
+.hotel-search-field-narrow {
+  width: 90px;
+}
+
+.hotel-card-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.hotel-search-card {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
+.hotel-search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hotel-search-field label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.hotel-search-field input {
+  margin-bottom: 0;
+}
+
+/* 不是沿用 .note-template-select - 那個 class 是設計給獨立一整排的表單用
+   (沒自己的 padding/border/font-size,靠瀏覽器原生樣式,而且
+   max-width:55% 是配合它自己的版面),擺進這排要跟兩個日期欄位對齊的
+   inline 表單裡,高度/寬度都會對不上、字也會被瀏覽器原生的窄選單擠斷行。
+   這裡直接比照 .note-editor-title-input 的 padding/border/font-size,
+   確保跟旁邊的日期欄位同高。 */
+.hotel-search-select {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--white);
+  color: var(--text);
+  min-width: 180px;
+  margin-bottom: 0;
+}
+
+.hotel-search-btn {
+  height: 38px;
+}
+
+.hotel-filter-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+
+.hotel-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.hotel-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--white);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.hotel-status-badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.hotel-status-badge.scraping::before,
+.hotel-status-badge.pending::before {
+  background: var(--event-blue);
+}
+
+.hotel-status-badge.done {
+  color: var(--reminder-green);
+  border-color: var(--reminder-green);
+}
+
+.hotel-status-badge.done::before {
+  background: var(--reminder-green);
+}
+
+.hotel-status-badge.failed {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.hotel-status-badge.failed::before {
+  background: var(--accent);
+}
+
+.hotel-status-badge .spinner {
+  width: 10px;
+  height: 10px;
+}
+
+.hotel-result-count {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.hotel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.hotel-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.hotel-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.hotel-card-img {
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  display: block;
+}
+
+.hotel-card-img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: var(--sidebar-bg);
+}
+
+.hotel-card-img-fallback svg {
+  width: 32px;
+  height: 32px;
+}
+
+.hotel-card-body {
+  padding: 10px 12px;
+}
+
+.hotel-card-name {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hotel-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.hotel-card-district {
+  background: var(--sidebar-bg);
+  border-radius: 999px;
+  padding: 2px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hotel-card-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.hotel-card-rating svg {
+  width: 12px;
+  height: 12px;
+  fill: #E0A233;
+  stroke: #E0A233;
+}
+
+.hotel-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hotel-card-price {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.hotel-card-link {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+/* 爬蟲進行中的骨架卡片,跟 .hotel-card 同尺寸,pulse 動畫暗示還在載入。 */
+.hotel-card-skeleton {
+  height: 210px;
+  background: var(--sidebar-bg);
+  animation: hotel-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes hotel-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .wiki-toolbar {
@@ -3243,7 +3533,8 @@ select {
   .wiki-panel,
   .calendar-panel,
   .news-panel,
-  .notes-panel {
+  .notes-panel,
+  .hotel-search-panel {
     padding: 56px 14px 14px;
   }
 

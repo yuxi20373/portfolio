@@ -71,3 +71,15 @@ services:
         sync: false
       - key: CORS_ALLOWED_ORIGINS
         value: "*"  # tighten to your Vercel URL once you have it, e.g. https://your-app.vercel.app
+      # AsiaYo hotel-search proxy (see app/routers/hotel_search.py) - a
+      # separately-deployed external service, not part of this app's own DB.
+      - key: ASIAYO_API_BASE_URL
+        value: https://asiayo-scraper-api.onrender.com
+      - key: ASIAYO_API_KEY
+        sync: false
+      # Bright Data Airbnb "discover by location" scraper (see
+      # app/routers/airbnb_search.py) - free tier, 5K records/month.
+      - key: BRIGHTDATA_API_TOKEN
+        sync: false
+      - key: BRIGHTDATA_AIRBNB_DATASET_ID
+        value: gd_ld7ll037kqy322v05

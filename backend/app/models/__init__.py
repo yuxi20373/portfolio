@@ -5,6 +5,7 @@ from .note import Note, NoteTemplate, NoteTag, MemoItem
 from .news import NewsArticle, NewsScrapeLog, NewsSourceSetting
 from .emoji import CustomEmoji
 from .event import CalendarEvent
+from .airbnb_search import AirbnbSearch
 
 __all__ = [
     "User",
@@ -22,4 +23,5 @@ __all__ = [
     "NewsSourceSetting",
     "CustomEmoji",
     "CalendarEvent",
+    "AirbnbSearch",
 ]

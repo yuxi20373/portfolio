@@ -7,6 +7,7 @@ pydantic-settings==2.6.1
 python-multipart==0.0.9
 python-dotenv==1.0.1
 requests==2.32.3
+Pillow==10.4.0  # 自訂 emoji 上傳時縮圖用(見 routers/emoji.py)
 
 # --- database: Postgres + schema migrations ---
 psycopg2-binary==2.9.10

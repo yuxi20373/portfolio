@@ -67,6 +67,7 @@ export default {
         if (store.wikiFolders.length === 0) store.loadWikiFolders();
       }
       if (v === "news" && store.newsSources.length === 0) store.loadNewsSources();
+      if (v === "hotels") store.loadHotelCities();
       if (v === "notes") {
         store.loadAllNotes();
         if (!store.noteTemplates.length) store.loadNoteTemplates();
@@ -248,6 +249,7 @@ export default {
       <button class="icon-btn" :class="{active: store.view==='calendar'}" @click="setView('calendar')" title="Calendar" v-html="icons.calendar"></button>
       <button class="icon-btn" :class="{active: store.view==='notes'}" @click="setView('notes')" title="Notes" v-html="icons.notes"></button>
       <button class="icon-btn" :class="{active: store.view==='news'}" @click="setView('news')" title="News" v-html="icons.news"></button>
+      <button class="icon-btn" :class="{active: store.view==='hotels'}" @click="setView('hotels')" title="Hotels" v-html="icons.hotel"></button>
     </div>
 
     <template v-if="store.view === 'chat'">
