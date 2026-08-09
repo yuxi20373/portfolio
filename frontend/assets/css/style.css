@@ -1347,8 +1347,12 @@ textarea {
   gap: 6px;
 }
 
+/* .note-editor-textarea 是共用 class,自帶 height:70vh(給筆記大範圍編輯用)-
+   這裡蓋掉,不然這個小小的地點輸入框會被撐成畫面 70% 高,rows="3" 那個
+   HTML 屬性完全沒用(CSS height 優先權比 rows 高)。 */
 .hotel-locations-row textarea {
   width: 200px;
+  height: 60px;
   resize: vertical;
 }
 
@@ -2496,6 +2500,21 @@ textarea {
   height: 100%;
 }
 
+.md-help-section {
+  margin-bottom: 8px;
+}
+
+.md-help-section:last-child {
+  margin-bottom: 0;
+}
+
+.md-help-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
 .tag-picker-popover {
   display: flex;
   flex-direction: column;
@@ -3536,6 +3555,27 @@ select {
   .notes-panel,
   .hotel-search-panel {
     padding: 56px 14px 14px;
+  }
+
+  /* 手機版每個欄位獨自一整排(不然 Check-in/Check-out 兩個 date input
+     擠在同一排,中間的 gap 會被壓縮到看起來像連在一起)。 */
+  .hotel-search-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hotel-search-field,
+  .hotel-search-field-wide,
+  .hotel-search-field-narrow {
+    width: 100%;
+  }
+
+  .hotel-search-field input {
+    width: 100%;
+  }
+
+  .hotel-locations-row textarea {
+    width: 100%;
   }
 
   .chat-window {

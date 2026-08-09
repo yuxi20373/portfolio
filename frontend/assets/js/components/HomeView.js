@@ -4,10 +4,11 @@ import { icons } from "../icons.js";
 import { api } from "../api.js";
 import { EMOJI_CATEGORIES, LINE_ICON_MAP } from "../emoji.js";
 
-// Emoji/Markdown 語法說明(見首頁右上角的笑臉按鈕)彈出的是一個大視窗,不是
-// 小 popover - 裡面除了語法規則,還會把 EMOJI_CATEGORIES/LINE_ICON_MAP 全部
-// 代號列出來(含使用者自己上傳的自訂 emoji),點一下代號會複製 :code: 到
-// 剪貼簿,方便直接貼進筆記,不用自己手打。
+// Emoji 說明(見首頁右上角的笑臉按鈕)彈出的是一個大視窗,不是小 popover -
+// 只放 emoji 相關的東西:把 EMOJI_CATEGORIES/LINE_ICON_MAP 全部代號列出來
+// (含使用者自己上傳的自訂 emoji),點一下代號會複製 :code: 到剪貼簿,方便
+// 直接貼進筆記,不用自己手打。其他 Markdown 語法(勾選格/底色等)說明放在
+// NotesView.js 筆記編輯器自己的「?」按鈕那邊,不是這裡。
 
 // Decorative stickers around the hero (see .home-sticker-wrap/.home-sticker
 // in style.css). x/y/size are numbers (percent / px) rather than
@@ -276,7 +277,7 @@ export default {
         </span>
       </button>
 
-      <button class="home-float corner-emoji-help" title="Emoji & Markdown syntax" @click="openEmojiHelp">
+      <button class="home-float corner-emoji-help" title="Emoji" @click="openEmojiHelp">
         <span class="home-float-inner">
           <span class="home-float-fallback" v-html="icons.smile"></span>
         </span>
@@ -290,14 +291,12 @@ export default {
     <div v-if="showEmojiHelp" class="emoji-help-overlay" @click.self="showEmojiHelp = false">
       <div class="emoji-help-modal">
         <div class="emoji-help-modal-header">
-          <h3>Emoji &amp; Markdown syntax</h3>
+          <h3>Emoji</h3>
           <button class="icon-btn" title="Close" @click="showEmojiHelp = false" v-html="icons.close"></button>
         </div>
         <div class="emoji-help-modal-body">
           <div class="emoji-help-syntax">
-            <div><code>- [ ] todo</code> &nbsp; <code>- [x] done</code> 勾選格</div>
-            <div><code>::b:text::</code> 藍 &nbsp; <code>::g:text::</code> 綠 &nbsp; <code>::p:text::</code> 橘 底色</div>
-            <div><code>:shortcode:</code> 下面點一下代號就會複製到剪貼簿,貼進筆記即可</div>
+            <div>筆記裡輸入 <code>:shortcode:</code> 就會變成對應的 emoji;下面點一下代號會複製 <code>:shortcode:</code> 到剪貼簿,貼進筆記即可。</div>
           </div>
           <input type="text" v-model="emojiFilter" class="emoji-picker-search" placeholder="Search shortcode…" />
           <div v-for="cat in emojiCategories" :key="cat.name" class="emoji-picker-cat">

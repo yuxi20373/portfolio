@@ -6,17 +6,33 @@ import ColorPicker from "./ColorPicker.js";
 import TagPicker from "./TagPicker.js";
 import EmojiPicker from "./EmojiPicker.js";
 
+// 分成幾個小節顯示(每節一個小標題),比原本一整排攤平的清單好讀 - emoji
+// 語法的詳細代號列表放在首頁笑臉按鈕那邊,這裡只講語法本身。
 const MARKDOWN_HELP = `
-  <div><code># Heading</code></div>
-  <div><code>**bold**</code> &nbsp; <code>*italic*</code></div>
-  <div><code>- list item</code></div>
-  <div><code>1. numbered item</code></div>
-  <div><code>- [ ] todo</code> &nbsp; <code>- [x] done</code></div>
-  <div><code>[text](url)</code></div>
-  <div><code>\`inline code\`</code></div>
-  <div><code>&gt; quote</code></div>
-  <div><code>:smile:</code> emoji(內建/自訂/單線條 icon,按旁邊的笑臉圖示直接點選插入)</div>
-  <div><code>::b:text::</code> 藍 &nbsp; <code>::g:text::</code> 綠 &nbsp; <code>::p:text::</code> 橘 底色</div>
+  <div class="md-help-section">
+    <div class="md-help-title">格式</div>
+    <div><code># Heading</code></div>
+    <div><code>**bold**</code> &nbsp; <code>*italic*</code></div>
+    <div><code>- list item</code></div>
+    <div><code>1. numbered item</code></div>
+    <div><code>[text](url)</code></div>
+    <div><code>\`inline code\`</code></div>
+    <div><code>&gt; quote</code></div>
+  </div>
+  <div class="md-help-section">
+    <div class="md-help-title">勾選格</div>
+    <div><code>- [ ] todo</code> &nbsp; <code>- [x] done</code></div>
+  </div>
+  <div class="md-help-section">
+    <div class="md-help-title">底色</div>
+    <div><code>::b:text::</code> 藍色</div>
+    <div><code>::g:text::</code> 綠色</div>
+    <div><code>::p:text::</code> 橘色</div>
+  </div>
+  <div class="md-help-section">
+    <div class="md-help-title">Emoji</div>
+    <div><code>:smile:</code> 按旁邊的笑臉圖示直接點選插入(內建/自訂/單線條 icon)</div>
+  </div>
 `;
 
 export default {

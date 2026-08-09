@@ -1,23 +1,20 @@
-# Home page images
+# 首頁圖片
 
-Drop your own PNGs here (transparent background recommended) with these
-**exact filenames** - `components/HomeView.js` already references them, and
-gracefully falls back to a plain SVG icon for anything missing, so you can
-add these one at a time without ever breaking the page.
+把你自己的 PNG 圖片(建議用透明背景)放在這裡,並用以下**精確檔名**——
+`components/HomeView.js` 已經直接參照這些檔名,任何缺少的圖片都會優雅地
+退回成純 SVG icon,所以你可以一張一張慢慢加,不會把頁面弄壞。
 
-| Filename | Where it shows up | Suggested size |
+| 檔名 | 出現位置 | 建議尺寸 |
 |---|---|---|
-| `hero.png` | The big theme image in the center | ~800×800, roughly square, transparent or on its own backdrop |
-| `icon-light.png` | Floating button at the **top** of the hero image - toggles light/dark mode | ~200×200, transparent |
-| `icon-wiki.png` | Floating button beside the hero - opens the Knowledge base view | ~200×200, transparent |
-| `icon-calendar.png` | Floating button beside the hero - opens the Calendar view | ~200×200, transparent |
-| `icon-weather.png` | Floating button beside the hero - opens Calendar (where the weather widget lives) | ~200×200, transparent |
+| `hero.png` | 正中央的主題大圖 | 約 800×800,大致正方形,透明背景或有自己的背景都可以 |
+| `icon-light.png` | 主視覺圖片**上方**的浮動按鈕——切換淺色/深色模式 | 約 200×200,透明背景 |
+| `icon-wiki.png` | 主視覺圖片旁邊的浮動按鈕——開啟知識庫檢視 | 約 200×200,透明背景 |
+| `icon-calendar.png` | 主視覺圖片旁邊的浮動按鈕——開啟行事曆檢視 | 約 200×200,透明背景 |
+| `icon-weather.png` | 主視覺圖片旁邊的浮動按鈕——開啟行事曆(天氣小工具就在那裡) | 約 200×200,透明背景 |
 
-All the small icons render inside circular buttons with `object-fit:
-contain`, so a square image with the subject centered and transparent
-padding around it works best - it'll get a soft drop-shadow and a gentle
-floating animation automatically (see `.home-float` in `style.css`).
+所有的小圖示都會顯示在圓形按鈕裡,並套用 `object-fit: contain`,所以
+主體置中、周圍留有透明邊距的正方形圖片效果最好——會自動加上柔和的陰影
+跟緩慢的浮動動畫(見 `style.css` 裡的 `.home-float`)。
 
-The hero image isn't cropped to a circle - it's shown in full via
-`object-fit: contain`, so any aspect ratio works, though something close
-to square fits the layout best.
+主視覺圖片不會被裁成圓形——它是用 `object-fit: contain` 完整顯示,所以
+任何長寬比都可以,不過接近正方形會最符合版面。

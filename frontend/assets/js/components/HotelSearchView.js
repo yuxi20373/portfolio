@@ -130,11 +130,25 @@ export default {
       });
     });
 
-    // 符合價格條件的裡面,評價由高到低排序,取前 TOP_N 筆顯示。
+    // null/undefined 一律排到最後(不管遞增還遞減),其餘照 dir 比大小。
+    function cmp(a, b, dir) {
+      if (a == null && b == null) return 0;
+      if (a == null) return 1;
+      if (b == null) return -1;
+      return dir === "asc" ? a - b : b - a;
+    }
+
+    // 排序優先順序:價錢低到高 > 評價高到低(價錢相同時)> 評論數多到少
+    // (評價也相同時)。符合價格條件的裡面排完,取前 TOP_N 筆顯示。
     const displayResults = computed(() =>
       matchedResults.value
         .slice()
-        .sort((a, b) => (ratingOf(b) ?? -Infinity) - (ratingOf(a) ?? -Infinity))
+        .sort(
+          (a, b) =>
+            cmp(priceOf(a), priceOf(b), "asc") ||
+            cmp(ratingOf(a), ratingOf(b), "desc") ||
+            cmp(a.review_count, b.review_count, "desc"),
+        )
         .slice(0, TOP_N),
     );
 
@@ -159,7 +173,7 @@ export default {
 
     <div class="hotel-search-card">
       <div class="hotel-search-field hotel-search-field-wide">
-        <label>Locations(一行一個,或用右邊選台灣縣市)</label>
+        <label>Locations</label>
         <div class="hotel-locations-row">
           <textarea v-model="locationsText" class="note-editor-textarea" rows="3" placeholder="Taipei, Taiwan&#10;Tainan, Taiwan"></textarea>
           <span class="note-help-wrap">
