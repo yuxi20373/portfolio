@@ -5,6 +5,7 @@ import { renderMarkdown } from "../markdown.js";
 import ColorPicker from "./ColorPicker.js";
 import TagPicker from "./TagPicker.js";
 import EmojiPicker from "./EmojiPicker.js";
+import { avatarSrc } from "../avatars.js";
 
 // 分成幾個小節顯示(每節一個小標題),比原本一整排攤平的清單好讀 - emoji
 // 語法的詳細代號列表放在首頁笑臉按鈕那邊,這裡只講語法本身。
@@ -271,6 +272,60 @@ export default {
       }
     }
 
+    // --- 分享筆記(見編輯工具列的 send 按鈕)- 只有筆記本人能分享,對方是
+    // 唯讀,見 store.viewingNote.is_owner 那段的顯示邏輯。 ---
+    const showSharePicker = ref(false);
+    const shareUsername = ref("");
+    const sharing = ref(false);
+    const shareError = ref("");
+    const shareSuccessMsg = ref("");
+
+    async function toggleSharePicker() {
+      showSharePicker.value = !showSharePicker.value;
+      shareError.value = "";
+      shareSuccessMsg.value = "";
+      if (showSharePicker.value && !store.recentShareTargets.length) {
+        await store.loadRecentShareTargets();
+      }
+    }
+
+    async function shareCurrentNote(username) {
+      if (!store.viewingNote || !username) return;
+      sharing.value = true;
+      shareError.value = "";
+      shareSuccessMsg.value = "";
+      try {
+        const res = await store.shareNote(store.viewingNote.id, username);
+        shareSuccessMsg.value = `已分享給 ${res.shared_with.display_name || res.shared_with.username}`;
+        shareUsername.value = "";
+      } catch (e) {
+        shareError.value = e.message;
+      } finally {
+        sharing.value = false;
+      }
+    }
+
+    function submitShare() {
+      shareCurrentNote(shareUsername.value.trim());
+    }
+
+    // --- Shared with me(見主列表最底下的收合區塊,收合狀態是這個元件自己
+    // 的 local state,不需要放進全域 store)---
+    const sharedSectionOpen = ref(false);
+
+    async function toggleSharedSection() {
+      sharedSectionOpen.value = !sharedSectionOpen.value;
+      if (sharedSectionOpen.value) await store.loadSharedNotes();
+    }
+
+    function openSharedNote(id) {
+      store.openNoteView(id, store.sharedNotes.map((x) => x.id));
+    }
+
+    function onAvatarImgError(e) {
+      e.target.style.display = "none";
+    }
+
     // --- Template Manage 畫面(見 Sidebar.js 的「Template Manage」按鈕、
     // store.templateManageOpen)- 預設是純清單(每一列自己有 Edit/Delete),
     // 下面一個「+」新增。名稱/tags/內容表單只有在點「+」或某一列的 Edit
@@ -415,6 +470,9 @@ export default {
       showEmojiPicker, noteContentTextarea, insertEmojiCode,
       openNote, closeNote, startEditNote, cancelEditNote, saveNoteEdit, removeNote,
       canStepNotePrev, canStepNoteNext,
+      showSharePicker, shareUsername, sharing, shareError, shareSuccessMsg,
+      toggleSharePicker, shareCurrentNote, submitShare,
+      sharedSectionOpen, toggleSharedSection, openSharedNote, avatarSrc, onAvatarImgError,
       showTemplateForm, tmName, tmContent, tmTags, tmSaving,
       startNewTemplate, editTemplateRow, cancelTemplateForm, saveTemplate, deleteTemplateRow, closeTemplateManage,
       promptNewTag, renameTag, deleteTagRow,
@@ -522,6 +580,26 @@ export default {
               <button class="icon-btn" title="Markdown syntax help" @click="editNoteHelp = !editNoteHelp">?</button>
               <div v-if="editNoteHelp" class="note-help-popover" v-html="MARKDOWN_HELP"></div>
             </div>
+            <div class="note-help-wrap">
+              <button class="icon-btn" title="Share this note" @click="toggleSharePicker" v-html="icons.send"></button>
+              <div v-if="showSharePicker" class="note-help-popover share-popover">
+                <div class="share-row">
+                  <input type="text" v-model="shareUsername" class="note-editor-title-input" style="margin-bottom:0;" placeholder="username" @keyup.enter="submitShare" />
+                  <button class="btn" :disabled="sharing || !shareUsername.trim()" @click="submitShare">
+                    <span v-if="sharing" class="spinner"></span><span v-else>Share</span>
+                  </button>
+                </div>
+                <div v-if="shareError" class="share-msg share-msg-error">{{ shareError }}</div>
+                <div v-if="shareSuccessMsg" class="share-msg share-msg-success">{{ shareSuccessMsg }}</div>
+                <div v-if="store.recentShareTargets.length" class="share-recent">
+                  <button v-for="t in store.recentShareTargets" :key="t.username" type="button" class="share-recent-item" :title="'Share with ' + (t.display_name || t.username)" @click="shareCurrentNote(t.username)">
+                    <img v-if="avatarSrc(t.avatar)" :src="avatarSrc(t.avatar)" alt="" class="share-recent-avatar" @error="onAvatarImgError" />
+                    <span v-else class="share-recent-avatar share-recent-avatar-fallback" v-html="icons.user"></span>
+                    <span class="share-recent-name">{{ t.display_name || t.username }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
           <textarea v-if="!editNotePreview" ref="noteContentTextarea" v-model="editNoteContent" class="note-editor-textarea note-write-textarea" rows="10"></textarea>
           <div v-else class="markdown-body note-editor-preview" v-html="renderMarkdown(editNoteContent)"></div>
@@ -539,13 +617,20 @@ export default {
             <div class="note-detail-actions">
               <button class="icon-btn" title="Previous" :disabled="!canStepNotePrev" @click="store.stepNote(-1)" v-html="icons.chevronLeft"></button>
               <button class="icon-btn" title="Next" :disabled="!canStepNoteNext" @click="store.stepNote(1)" v-html="icons.chevronRight"></button>
-              <button class="icon-btn" title="Edit" @click="startEditNote" v-html="icons.edit"></button>
-              <button class="icon-btn favorite-btn" :class="{active: store.viewingNote.is_favorited}" title="Favorite"
-                      @click="store.toggleNoteFavorite(store.viewingNote.id)"
-                      v-html="store.viewingNote.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
-              <button class="icon-btn" title="Delete" @click="removeNote" v-html="icons.trash"></button>
+              <template v-if="store.viewingNote.is_owner !== false">
+                <button class="icon-btn" title="Edit" @click="startEditNote" v-html="icons.edit"></button>
+                <button class="icon-btn favorite-btn" :class="{active: store.viewingNote.is_favorited}" title="Favorite"
+                        @click="store.toggleNoteFavorite(store.viewingNote.id)"
+                        v-html="store.viewingNote.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
+                <button class="icon-btn" title="Delete" @click="removeNote" v-html="icons.trash"></button>
+              </template>
               <button class="icon-btn" title="Back to notes" @click="closeNote" v-html="icons.close"></button>
             </div>
+          </div>
+          <div v-if="store.viewingNote.shared_by" class="note-shared-by">
+            <img v-if="avatarSrc(store.viewingNote.shared_by.avatar)" :src="avatarSrc(store.viewingNote.shared_by.avatar)" alt="" class="share-recent-avatar" @error="onAvatarImgError" />
+            <span v-else class="share-recent-avatar share-recent-avatar-fallback" v-html="icons.user"></span>
+            Shared by {{ store.viewingNote.shared_by.display_name || store.viewingNote.shared_by.username }}
           </div>
           <div class="note-detail-date">{{ fmtDateShort(store.viewingNote.created_at) }}</div>
           <div v-if="store.viewingNote.tags && store.viewingNote.tags.length" class="tag-row">
@@ -628,6 +713,27 @@ export default {
         </template>
       </template>
       <div v-if="!store.allNotes.length" class="empty-state">No notes yet</div>
+
+      <div class="notes-shared-section">
+        <div class="notes-shared-header" :class="{open: sharedSectionOpen}" @click="toggleSharedSection">
+          <span class="notes-shared-chevron" v-html="icons.chevronRight"></span>
+          <span v-html="icons.send"></span>
+          <span>Shared with me</span>
+        </div>
+        <template v-if="sharedSectionOpen">
+          <div class="notes-grid">
+            <div v-for="n in store.sharedNotes" :key="n.id" class="card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openSharedNote(n.id)">
+              <div class="day-card-title">{{ n.title }}</div>
+              <div class="shared-note-owner">
+                <img v-if="avatarSrc(n.shared_by.avatar)" :src="avatarSrc(n.shared_by.avatar)" alt="" class="share-recent-avatar" @error="onAvatarImgError" />
+                <span v-else class="share-recent-avatar share-recent-avatar-fallback" v-html="icons.user"></span>
+                {{ n.shared_by.display_name || n.shared_by.username }}
+              </div>
+            </div>
+          </div>
+          <div v-if="!store.sharedNotes.length" class="empty-state">No one has shared a note with you yet</div>
+        </template>
+      </div>
     </template>
   </div>
   `,

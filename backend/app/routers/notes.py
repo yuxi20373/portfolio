@@ -3,6 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session as DBSession
 
 from .. import models
@@ -51,6 +52,10 @@ class NoteTagUpdate(BaseModel):
     name: str
 
 
+class ShareCreate(BaseModel):
+    username: str
+
+
 def _note_dict(n: models.Note):
     return {
         "id": n.id,
@@ -63,9 +68,31 @@ def _note_dict(n: models.Note):
     }
 
 
+def _user_dict(u: models.User) -> dict:
+    return {"username": u.username, "display_name": u.display_name, "avatar": u.avatar}
+
+
 def _get_owned_note(db: DBSession, note_id: int, user: models.User) -> models.Note:
     n = db.query(models.Note).get(note_id)
     if not n or n.user_id != user.id:
+        raise HTTPException(404, "not found")
+    return n
+
+
+def _get_viewable_note(db: DBSession, note_id: int, user: models.User) -> models.Note:
+    """給讀取用(GET)- 除了自己的筆記,別人分享給你的筆記也看得到(唯讀)。
+    編輯/刪除/收藏一律還是走 _get_owned_note,分享出去的筆記不能被對方改。"""
+    n = db.query(models.Note).get(note_id)
+    if not n:
+        raise HTTPException(404, "not found")
+    if n.user_id == user.id:
+        return n
+    shared = (
+        db.query(models.NoteShare)
+        .filter(models.NoteShare.note_id == note_id, models.NoteShare.shared_with_user_id == user.id)
+        .first()
+    )
+    if not shared:
         raise HTTPException(404, "not found")
     return n
 
@@ -241,6 +268,48 @@ def delete_note_tag(tag_id: int, db: DBSession = Depends(get_db), user: models.U
     return {"ok": True}
 
 
+# ---------------- Sharing ----------------
+#
+# Same registration-order reasoning as Templates/Tags above - /shared and
+# /shared/recent-targets are static paths that must come before /{note_id}.
+
+
+@router.get("/shared")
+def list_shared_notes(db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+    """別人分享給我的筆記,唯讀 - 見 NotesView.js 底下的「Shared with me」區塊。"""
+    rows = (
+        db.query(models.Note, models.User)
+        .join(models.NoteShare, models.NoteShare.note_id == models.Note.id)
+        .join(models.User, models.Note.user_id == models.User.id)
+        .filter(models.NoteShare.shared_with_user_id == user.id)
+        .order_by(models.NoteShare.created_at.desc())
+        .all()
+    )
+    result = []
+    for n, owner in rows:
+        d = _note_dict(n)
+        d["shared_by"] = _user_dict(owner)
+        result.append(d)
+    return result
+
+
+@router.get("/shared/recent-targets")
+def recent_share_targets(db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
+    """我最近分享出去(不是分享給我)的對象,依最後分享時間排序取前 2 個,
+    給分享面板當快速選項用(見 NotesView.js)。"""
+    rows = (
+        db.query(models.User, func.max(models.NoteShare.created_at).label("last_shared"))
+        .join(models.NoteShare, models.NoteShare.shared_with_user_id == models.User.id)
+        .join(models.Note, models.NoteShare.note_id == models.Note.id)
+        .filter(models.Note.user_id == user.id)
+        .group_by(models.User.id)
+        .order_by(func.max(models.NoteShare.created_at).desc())
+        .limit(2)
+        .all()
+    )
+    return [_user_dict(u) for u, _last_shared in rows]
+
+
 # ---------------- Single note by id ----------------
 #
 # Registered last - see the comment above the Templates section for why
@@ -249,8 +318,13 @@ def delete_note_tag(tag_id: int, db: DBSession = Depends(get_db), user: models.U
 
 @router.get("/{note_id}")
 def get_note(note_id: int, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
-    n = _get_owned_note(db, note_id, user)
-    return _note_dict(n)
+    n = _get_viewable_note(db, note_id, user)
+    d = _note_dict(n)
+    d["is_owner"] = n.user_id == user.id
+    if not d["is_owner"]:
+        owner = db.query(models.User).get(n.user_id)
+        d["shared_by"] = _user_dict(owner)
+    return d
 
 
 @router.patch("/{note_id}")
@@ -299,3 +373,34 @@ def delete_note(note_id: int, db: DBSession = Depends(get_db), user: models.User
     db.delete(n)
     db.commit()
     return {"ok": True}
+
+
+@router.post("/{note_id}/share")
+def share_note(
+    note_id: int,
+    payload: ShareCreate,
+    db: DBSession = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    """只有筆記本人能分享(_get_owned_note),分享出去的一方唯讀 - 見
+    _get_viewable_note。同一個人重複分享同一則筆記是 no-op,不會出錯也不會
+    重複建立紀錄(note_shares 有 unique constraint)。"""
+    n = _get_owned_note(db, note_id, user)
+    target_username = payload.username.strip()
+    if not target_username:
+        raise HTTPException(400, "username cannot be empty")
+    target = db.query(models.User).filter(models.User.username == target_username).first()
+    if not target:
+        raise HTTPException(404, "user not found")
+    if target.id == user.id:
+        raise HTTPException(400, "cannot share a note with yourself")
+
+    existing = (
+        db.query(models.NoteShare)
+        .filter(models.NoteShare.note_id == n.id, models.NoteShare.shared_with_user_id == target.id)
+        .first()
+    )
+    if not existing:
+        db.add(models.NoteShare(note_id=n.id, shared_with_user_id=target.id))
+        db.commit()
+    return {"ok": True, "shared_with": _user_dict(target)}

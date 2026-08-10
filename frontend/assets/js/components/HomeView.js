@@ -81,6 +81,13 @@ export default {
       e.target.parentElement.classList.add("home-hero-fallback");
     }
 
+    // 點主視覺圖片 = 編輯帳號的唯一入口(見 ProfileView.js)- 用 confirm()
+    // 先問一下,不小心點到主圖不會直接跳走。
+    function onHeroClick() {
+      if (!confirm("要編輯帳號嗎?")) return;
+      store.view = "profile";
+    }
+
     const showEmojiHelp = ref(false);
     const emojiFilter = ref("");
     const copiedCode = ref("");
@@ -204,6 +211,7 @@ export default {
       onImgError,
       onImgLoad,
       onHeroError,
+      onHeroClick,
       onWeatherClick,
       isRaining,
       heroSrc,
@@ -226,7 +234,7 @@ export default {
   <div class="main-panel home-panel">
     <div class="home-welcome">Welcome, {{ store.username }}</div>
     <div class="home-hero-wrap" ref="heroWrap" @pointermove="handlePointerMove" @pointerleave="resetPush">
-      <img class="home-hero-img" :src="heroSrc" alt="" @error="onHeroError" />
+      <img class="home-hero-img" :src="heroSrc" alt="" title="編輯帳號" @error="onHeroError" @click="onHeroClick" />
 
       <span v-for="(s, i) in stickers" :key="s.id" class="home-sticker-wrap"
             :style="{ '--x': s.x + '%', '--y': s.y + '%', '--push-x': pushOffsets[i].x + 'px', '--push-y': pushOffsets[i].y + 'px' }">

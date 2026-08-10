@@ -81,7 +81,17 @@ export const store = reactive({
   loggedIn: !!localStorage.getItem("auth_token"),
   username: localStorage.getItem("auth_username") || null,
 
-  // view: "home" | "chat" | "wiki" | "calendar" | "news"
+  // 自我可編輯的個人資料(display_name/avatar/status)- 跟 username 不一樣,
+  // username 是登入帳號、只能透過後端 script 設定;這幾個欄位在前端
+  // 「編輯帳號」畫面(ProfileView.js)自己就能改。null 代表還沒載入過,
+  // 見 loadProfile()。
+  profile: null,
+  // 別人分享給我的筆記(唯讀),見 NotesView.js 底下的「Shared with me」。
+  sharedNotes: [],
+  // 我最近分享出去(不是分享給我)的對象,最多 2 個,分享面板的快速選項用。
+  recentShareTargets: [],
+
+  // view: "home" | "chat" | "wiki" | "calendar" | "news" | "profile"
   view: "home",
 
   // Mobile-only drawer state for the sidebar (see the hamburger button in
@@ -601,6 +611,33 @@ export const store = reactive({
   async loadAllNotes() {
     const path = this.notesTagFilter ? `/api/notes?tag=${encodeURIComponent(this.notesTagFilter)}` : "/api/notes";
     this.allNotes = await api.get(path);
+  },
+
+  // --- Profile(display_name/avatar/status)- 見 ProfileView.js ---
+
+  async loadProfile() {
+    this.profile = await api.get("/api/profile");
+  },
+
+  async updateProfile(payload) {
+    this.profile = await api.patch("/api/profile", payload);
+    return this.profile;
+  },
+
+  // --- Note sharing - 見 NotesView.js 的分享按鈕/Shared with me 區塊 ---
+
+  async loadSharedNotes() {
+    this.sharedNotes = await api.get("/api/notes/shared");
+  },
+
+  async loadRecentShareTargets() {
+    this.recentShareTargets = await api.get("/api/notes/shared/recent-targets");
+  },
+
+  async shareNote(noteId, username) {
+    const res = await api.post(`/api/notes/${noteId}/share`, { username });
+    await this.loadRecentShareTargets();
+    return res;
   },
 
   // --- Notes: templates & tags (standalone Notes page) ---
