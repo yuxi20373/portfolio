@@ -2,7 +2,7 @@ const { ref, computed } = window.Vue;
 import { store } from "../store.js";
 import { icons } from "../icons.js";
 
-// 測試/串接 Airbnb(Bright Data Dataset API,discover_by=location)訂房搜尋
+// 測試/串接 Airbnb(Apify automation-lab/airbnb-listing actor)訂房搜尋
 // 用的頁面 - 見 store.js 的 startAirbnbSearch / backend/app/routers/airbnb_search.py。
 // AsiaYo 那個來源先暫時拿掉(store.js 的 hotelSearch* 那組還在,之後要加回來
 // 直接復用即可),目前只剩 Airbnb 這條路線。
@@ -13,7 +13,7 @@ import { icons } from "../icons.js";
 const STATUS_LABELS = { pending: "等待中", scraping: "爬蟲抓取中", done: "完成", failed: "失敗" };
 const TOP_N = 30;
 
-// 台灣縣市快速勾選用(見下面的 showLocationPicker)- Bright Data 吃的是自由
+// 台灣縣市快速勾選用(見下面的 showLocationPicker)- Apify 吃的是自由
 // 文字的 "City, Country" 格式,這份清單是自己定義的,跟 AsiaYo 那邊固定的
 // 14 個縣市無關(那個列表本來就缺南投,這裡不受它限制)。
 const TAIWAN_LOCATIONS = [

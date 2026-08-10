@@ -77,9 +77,10 @@ services:
         value: https://asiayo-scraper-api.onrender.com
       - key: ASIAYO_API_KEY
         sync: false
-      # Bright Data Airbnb "discover by location" scraper (see
-      # app/routers/airbnb_search.py) - free tier, 5K records/month.
-      - key: BRIGHTDATA_API_TOKEN
+      # Apify "automation-lab/airbnb-listing" actor (see
+      # app/routers/airbnb_search.py) - pay-per-event, $5/month free
+      # platform credit ($0.005/run + $0.005/listing scraped).
+      - key: APIFY_API_TOKEN
         sync: false
-      - key: BRIGHTDATA_AIRBNB_DATASET_ID
-        value: gd_ld7ll037kqy322v05
+      - key: APIFY_AIRBNB_ACTOR_ID
+        value: automation-lab~airbnb-listing

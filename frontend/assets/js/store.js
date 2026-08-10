@@ -166,7 +166,7 @@ export const store = reactive({
   hotelSearchPolling: false,
   hotelSearchError: null,
 
-  // Airbnb search(外部 Bright Data 爬蟲服務,見 HotelSearchView.js)- 跟上面
+  // Airbnb search(外部 Apify 爬蟲服務,見 HotelSearchView.js)- 跟上面
   // AsiaYo 那組是同一個頁面的兩個分頁,狀態分開存是因為兩邊 job 的欄位/id
   // 完全不共通,硬併在一起反而更亂。
   airbnbSearchJob: null,

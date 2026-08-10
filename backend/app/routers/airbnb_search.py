@@ -1,32 +1,38 @@
-"""Proxies Bright Data's "discover Airbnb by location" dataset scraper
-(Dataset API, dataset_id=gd_ld7ll037kqy322v05, discover_by=location) - a
-third-party service, not part of this app's own scraping code.
+"""Proxies Apify's "automation-lab/airbnb-listing" actor - a third-party
+Airbnb scraper, not part of this app's own scraping code. Replaces the
+earlier Bright Data integration: unlike Bright Data (which rejected any
+price field with a strict validation error), this actor natively supports
+server-side priceMin/priceMax filtering. It has no rating/review-count
+filter though, so that part is still done client-side (see HotelSearchView.js's
+TOP_N sort).
 
-Unlike the AsiaYo proxy (routers/hotel_search.py), Bright Data has no
-built-in result caching - every trigger call burns real quota against the
-free 5K records/month tier. So this router owns its own cache: a repeat
-search for the exact same locations/dates/adults within
+Apify has no built-in result caching either (same situation Bright Data was
+in) - every run burns real platform credit (PAY_PER_EVENT pricing: $0.005
+per run + $0.005 per listing scraped - the $5/month free platform credit is
+roughly 1000 listings' worth). So this router still owns its own cache: a
+repeat search for the exact same locations/dates/adults within
 settings.airbnb_search_cache_days returns the stored AirbnbSearch row
-instead of triggering a fresh collection.
+instead of triggering a fresh run.
 
-Multi-location: Bright Data's trigger body takes an `input` array, one
-object per location, in a single call - so a search across several
-locations at once is still one trigger/one snapshot, not N separate
-searches. `limit_per_input` is literally "per input item" though, so to
-keep a predictable total record budget (~settings.airbnb_search_total_limit
-per search, regardless of how many locations are in it) it's divided
-evenly across however many locations were requested.
+Multi-location: the actor's `locationQueries` input takes an array directly,
+so a search across several locations is still one run, not N separate
+searches - simpler than Bright Data's per-input `limit_per_input` math,
+though it also means there's no per-location breakdown in the raw results
+(see _extract_listing's discovery_location: always None here, unlike the
+Bright Data version).
 
-Flow: POST creates (or reuses a cached) row and, if new, calls Bright
-Data's /scrape endpoint (which is itself async despite the name - it
-returns a snapshot_id immediately, not the data). GET polls Bright Data's
-/progress endpoint and, once ready, fetches /snapshot and stores a
-trimmed-down version of the results (the raw response is enormous - full
-amenity lists, review text, HTML fragments - and mostly irrelevant to the
-UI, see _extract_listing).
+Flow: POST creates (or reuses a cached) row and, if new, calls Apify's
+POST /v2/acts/{actor}/runs (genuinely async - returns a run id immediately,
+confirmed via direct testing: trigger responds in ~1s regardless of how
+long the actual scrape takes). GET polls Apify's GET /v2/actor-runs/{runId}
+and, once SUCCEEDED, fetches GET /v2/actor-runs/{runId}/dataset/items and
+stores a trimmed-down version of the results (see _extract_listing - Apify's
+raw fields are nested objects with currency-symbol-prefixed price strings,
+very different shape from Bright Data's flat numeric fields).
 """
 
 import json
+import re
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 
@@ -43,11 +49,11 @@ from ..database import get_db, SessionLocal
 router = APIRouter(prefix="/api/airbnb-search", tags=["airbnb-search"])
 
 _TIMEOUT = 45
-_BASE_URL = "https://api.brightdata.com/datasets/v3"
+_BASE_URL = "https://api.apify.com/v2"
 
 
-def _headers():
-    return {"Authorization": f"Bearer {settings.brightdata_api_token}", "Content-Type": "application/json"}
+def _params(**extra):
+    return {"token": settings.apify_api_token, **extra}
 
 
 class AirbnbSearchCreate(BaseModel):
@@ -63,28 +69,43 @@ def _location_key(locations: List[str]) -> str:
     return json.dumps(sorted(set(locations)))
 
 
-def _extract_listing(raw: dict) -> Optional[dict]:
-    """Bright Data 一個 raw record 有 40+ 個欄位(含完整 amenities/reviews/HTML
-    片段),UI 用不到大部分,只挑幾個顯示會用到的存下來。有些 sub-item 爬失敗
-    時整個 record 只有 error/error_code,沒有 name,直接跳過。"""
-    if "name" not in raw and "listing_title" not in raw:
+_PRICE_RE = re.compile(r"[\d,.]+")
+
+
+def _parse_price(s: Optional[str]) -> Optional[float]:
+    """Apify 的價格是帶符號的字串,例如 "$129"、"NT$3,450" - 不是純數字,
+    要自己抓數字部分轉成 float。"""
+    if not s:
         return None
-    pricing = raw.get("pricing_details") or {}
-    images = raw.get("images") or []
+    m = _PRICE_RE.search(s)
+    return float(m.group().replace(",", "")) if m else None
+
+
+def _extract_listing(raw: dict, nights: int) -> Optional[dict]:
+    """Apify 一筆 raw record 的欄位形狀跟 Bright Data 完全不同 - title/price/
+    rating 都是巢狀物件,價格要自己轉數字、算平均每晚價(actor 本身只給整段
+    住宿的總價,不是每晚價)。skipDetailPages=true(見 _trigger_body)模式下
+    沒有 guests/amenities/is_guest_favorite 這些要進 detail page 才有的欄位,
+    固定回 None,前端本來就是 v-if 顯示,缺欄位不會壞掉。"""
+    if "id" not in raw:
+        return None
+    price = raw.get("price") or {}
+    rating = raw.get("rating") or {}
+    total = _parse_price(price.get("price"))
     return {
-        "property_id": raw.get("property_id"),
-        "name": raw.get("listing_title") or raw.get("name"),
-        "image": raw.get("image") or (images[0] if images else None),
-        "price_per_night": pricing.get("price_per_night") or raw.get("price"),
-        "total_price": raw.get("total_price"),
-        "currency": raw.get("currency"),
-        "rating": raw.get("ratings"),
-        "review_count": raw.get("property_number_of_reviews"),
-        "guests": raw.get("guests"),
-        "is_superhost": raw.get("is_supperhost"),
-        "is_guest_favorite": raw.get("is_guest_favorite"),
-        "url": raw.get("final_url") or raw.get("url"),
-        "discovery_location": (raw.get("discovery_input") or {}).get("location"),
+        "property_id": raw.get("id"),
+        "name": raw.get("title"),
+        "image": raw.get("thumbnail"),
+        "price_per_night": round(total / nights, 2) if total and nights else None,
+        "total_price": total,
+        "currency": "USD",
+        "rating": rating.get("guestSatisfaction"),
+        "review_count": rating.get("reviewsCount"),
+        "guests": None,
+        "is_superhost": raw.get("isSuperHost"),
+        "is_guest_favorite": None,
+        "url": raw.get("url"),
+        "discovery_location": None,
     }
 
 
@@ -106,35 +127,22 @@ def _job_dict(row: models.AirbnbSearch) -> dict:
 
 
 def _trigger_body(locations: List[str], check_in_date: str, check_out_date: str, adults: int) -> dict:
-    # 5K records/月的免費額度,固定抓一個 batch 就給 settings.airbnb_search_total_limit
-    # 筆的預算,不管這次搜幾個地點,平均分掉(至少 1 筆/地點)。
-    limit_per_input = max(1, settings.airbnb_search_total_limit // len(locations))
     return {
-        "input": [
-            {
-                "location": loc,
-                "check_in": f"{check_in_date}T00:00:00.000Z",
-                "check_out": f"{check_out_date}T00:00:00.000Z",
-                "num_of_adults": adults,
-                "num_of_children": 0,
-                "num_of_infants": "0",
-                "num_of_pets": 0,
-                "currency": "TWD",
-                "country": "",
-            }
-            for loc in locations
-        ],
-        "limit_per_input": limit_per_input,
+        "locationQueries": locations,
+        "checkIn": check_in_date,
+        "checkOut": check_out_date,
+        "adults": adults,
+        "currency": "USD",  # actor 的 currency enum 沒有 TWD
+        "skipDetailPages": True,
+        "maxListings": settings.airbnb_search_total_limit,
+        "maxRequestsPerCrawl": settings.airbnb_search_max_requests,
     }
 
 
-# Bright Data 的 trigger 呼叫實測延遲落差很大 - 有時候 1 秒內就回
-# snapshot_id,有時候要等 45-60 秒以上(甚至偶爾整個沒回應)。如果讓
-# POST /searches 直接同步等這支呼叫,前端那個請求本身就會卡很久,Render
-# 這類平台前面的 gateway 搞不好等不到那麼久就先斷線了。所以改成:先用
-# status="pending" 建好 row、馬上回應前端,實際打 Bright Data 的動作丟到
-# background task 做完才更新 row - 前端本來就是每 3 秒輪詢一次,pending
-# 狀態直接復用「還在忙」的輪詢邏輯,不用改前端。
+# 直接測試過 Apify 的 trigger 呼叫 - POST /runs 幾乎立刻回應(~1 秒),不像
+# Bright Data 的 trigger 偶爾要等 45-60 秒以上,但還是丟 background task 做,
+# 理由不變:POST /searches 本身不該卡著等一個外部服務,前端本來就是每 3 秒
+# 輪詢一次,pending 狀態直接復用「還在忙」的輪詢邏輯。
 def _run_trigger(row_id: int, locations: List[str], check_in_date: str, check_out_date: str, adults: int):
     db = SessionLocal()
     try:
@@ -143,20 +151,13 @@ def _run_trigger(row_id: int, locations: List[str], check_in_date: str, check_ou
             return
         try:
             r = requests.post(
-                f"{_BASE_URL}/scrape",
-                params={
-                    "dataset_id": settings.brightdata_airbnb_dataset_id,
-                    "notify": "false",
-                    "include_errors": "true",
-                    "type": "discover_new",
-                    "discover_by": "location",
-                },
+                f"{_BASE_URL}/acts/{settings.apify_airbnb_actor_id}/runs",
+                params=_params(),
                 json=_trigger_body(locations, check_in_date, check_out_date, adults),
-                headers=_headers(),
                 timeout=120,
             )
             r.raise_for_status()
-            row.snapshot_id = r.json()["snapshot_id"]
+            row.snapshot_id = r.json()["data"]["id"]  # Apify run id
             row.status = "scraping"
         except Exception as e:
             row.status = "failed"
@@ -202,7 +203,7 @@ def create_search(
         check_in=check_in,
         check_out=check_out,
         adults=payload.adults,
-        currency="TWD",
+        currency="USD",
         status="pending",
         user_id=user.id,
     )
@@ -231,12 +232,12 @@ def get_search(
 
     # 前端每 3 秒就會來戳一次這支 API,單次逾時/連線失敗多半只是暫時的網路
     # 抖動 - 不要直接判定整個 job 失敗(那樣使用者要重新整個搜一次,還是要
-    # 再扣一次 Bright Data 配額),原樣回傳讓前端下一輪再試。真的卡太久(超過
+    # 再扣一次 Apify 額度),原樣回傳讓前端下一輪再試。真的卡太久(超過
     # 10 分鐘還沒好)才視為失敗,避免永遠卡在 scraping。
     try:
-        pr = requests.get(f"{_BASE_URL}/progress/{row.snapshot_id}", headers=_headers(), timeout=_TIMEOUT)
+        pr = requests.get(f"{_BASE_URL}/actor-runs/{row.snapshot_id}", params=_params(), timeout=_TIMEOUT)
         pr.raise_for_status()
-        progress = pr.json()
+        run = pr.json()["data"]
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
         return _maybe_timeout(row, db)
     except Exception as e:
@@ -246,28 +247,28 @@ def get_search(
         db.refresh(row)
         return _job_dict(row)
 
-    bd_status = progress.get("status")
-    if bd_status in ("failed", "error"):
+    apify_status = run.get("status")
+    if apify_status in ("FAILED", "ABORTED", "TIMED-OUT"):
         row.status = "failed"
-        row.error_message = progress.get("message") or "Bright Data collection failed"
+        row.error_message = f"Apify run {apify_status}"
         db.commit()
         db.refresh(row)
         return _job_dict(row)
 
-    if bd_status != "ready":
-        # 還在跑(running/closing 之類的),原樣回傳,前端繼續輪詢。
+    if apify_status != "SUCCEEDED":
+        # 還在跑(READY/RUNNING/ABORTING/TIMING-OUT 之類),原樣回傳,前端繼續輪詢。
         return _job_dict(row)
 
     try:
         sr = requests.get(
-            f"{_BASE_URL}/snapshot/{row.snapshot_id}",
-            params={"format": "json"},
-            headers=_headers(),
+            f"{_BASE_URL}/actor-runs/{row.snapshot_id}/dataset/items",
+            params=_params(format="json"),
             timeout=_TIMEOUT,
         )
         sr.raise_for_status()
         raw_records = sr.json()
-        listings = [x for x in (_extract_listing(r) for r in raw_records) if x]
+        nights = (row.check_out - row.check_in).days
+        listings = [x for x in (_extract_listing(r, nights) for r in raw_records) if x]
         row.results = json.dumps(listings)
         row.status = "done"
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
@@ -289,7 +290,7 @@ def _maybe_timeout(row: models.AirbnbSearch, db: DBSession) -> dict:
     無限卡下去了,標記失敗讓使用者可以重搜。"""
     if row.created_at and datetime.utcnow() - row.created_at > timedelta(minutes=_STUCK_AFTER_MINUTES):
         row.status = "failed"
-        row.error_message = "Timed out waiting for Bright Data"
+        row.error_message = "Timed out waiting for Apify"
         db.commit()
         db.refresh(row)
     return _job_dict(row)
