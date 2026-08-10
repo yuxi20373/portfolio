@@ -21,6 +21,9 @@ class NoteShare(Base):
     __table_args__ = (UniqueConstraint("note_id", "shared_with_user_id", name="uq_note_share_target"),)
 
     id = Column(Integer, primary_key=True)
-    note_id = Column(Integer, ForeignKey("notes.id"), nullable=False, index=True)
+    # ondelete=CASCADE - deleting a note must also drop its shares, or the
+    # delete fails with a ForeignKeyViolation the moment a shared note gets
+    # deleted (this bit a live account the day this was shipped).
+    note_id = Column(Integer, ForeignKey("notes.id", ondelete="CASCADE"), nullable=False, index=True)
     shared_with_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
