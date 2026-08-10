@@ -1,6 +1,7 @@
 const { ref, computed, nextTick, onMounted } = window.Vue;
 import { store } from "../store.js";
 import { icons } from "../icons.js";
+import { avatarSrc } from "../avatars.js";
 import MiniCalendar from "./MiniCalendar.js";
 import NoteMiniCalendar from "./NoteMiniCalendar.js";
 
@@ -45,6 +46,10 @@ export default {
     // Same graceful-fallback pattern as HomeView.js's decorative images -
     // if the PNG isn't there yet, just hide the broken <img>.
     function onIconError(e) {
+      e.target.style.display = "none";
+    }
+
+    function onAvatarImgError(e) {
       e.target.style.display = "none";
     }
 
@@ -226,6 +231,8 @@ export default {
       doMove,
       sortedNewsSources,
       onIconError,
+      avatarSrc,
+      onAvatarImgError,
       notesFavoritesOpen,
       homeIconOk,
       toggleNotesFavorites,
@@ -443,6 +450,12 @@ export default {
     </template>
 
     <template v-else-if="store.view === 'home'">
+      <div class="sidebar-profile" title="編輯帳號" @click="store.view = 'profile'">
+        <img v-if="store.profile && avatarSrc(store.profile.avatar)" :src="avatarSrc(store.profile.avatar)" alt="" class="sidebar-profile-avatar" @error="onAvatarImgError" />
+        <span v-else class="sidebar-profile-avatar sidebar-profile-avatar-fallback" v-html="icons.user"></span>
+        <span class="sidebar-profile-name">{{ (store.profile && store.profile.display_name) || store.username }}</span>
+      </div>
+
       <div class="memo-box">
         <div class="memo-box-title row between">
           <span>Memo</span>

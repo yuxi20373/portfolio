@@ -17,6 +17,7 @@ function loadAccountData() {
   store.loadSessions();
   store.loadModels();
   store.loadCustomEmoji(); // markdown 到處都會用到 :shortcode:,登入後就先載入一次
+  store.loadProfile(); // Sidebar(home)跟首頁主圖狀態文字都要用到,登入後就先載入,不用等進 ProfileView 才載
 }
 
 const App = {

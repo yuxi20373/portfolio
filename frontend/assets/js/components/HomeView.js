@@ -81,10 +81,9 @@ export default {
       e.target.parentElement.classList.add("home-hero-fallback");
     }
 
-    // 點主視覺圖片 = 編輯帳號的唯一入口(見 ProfileView.js)- 用 confirm()
-    // 先問一下,不小心點到主圖不會直接跳走。
+    // 點主視覺圖片 = 編輯帳號的唯一入口(見 ProfileView.js),直接進去,
+    // 不再跳 confirm() 確認。
     function onHeroClick() {
-      if (!confirm("要編輯帳號嗎?")) return;
       store.view = "profile";
     }
 
@@ -234,6 +233,7 @@ export default {
   <div class="main-panel home-panel">
     <div class="home-welcome">Welcome, {{ store.username }}</div>
     <div class="home-hero-wrap" ref="heroWrap" @pointermove="handlePointerMove" @pointerleave="resetPush">
+      <div v-if="store.profile && store.profile.status" class="home-status-bubble">{{ store.profile.status }}</div>
       <img class="home-hero-img" :src="heroSrc" alt="" title="編輯帳號" @error="onHeroError" @click="onHeroClick" />
 
       <span v-for="(s, i) in stickers" :key="s.id" class="home-sticker-wrap"

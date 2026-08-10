@@ -640,12 +640,14 @@ export default {
             <span v-else class="share-recent-avatar share-recent-avatar-fallback" v-html="icons.user"></span>
             Shared by {{ store.viewingNote.shared_by.display_name || store.viewingNote.shared_by.username }}
           </div>
-          <div v-if="store.viewingNote.shared_with && store.viewingNote.shared_with.length" class="note-shared-by">
-            <span v-html="icons.send"></span>
-            Shared with
-            <span v-for="(u, i) in store.viewingNote.shared_with" :key="u.username">{{ u.display_name || u.username }}<span v-if="i < store.viewingNote.shared_with.length - 1">, </span></span>
+          <div class="note-detail-meta-row">
+            <div v-if="store.viewingNote.shared_with && store.viewingNote.shared_with.length" class="note-shared-by">
+              <span v-html="icons.send"></span>
+              Shared with
+              <span v-for="(u, i) in store.viewingNote.shared_with" :key="u.username">{{ u.display_name || u.username }}<span v-if="i < store.viewingNote.shared_with.length - 1">, </span></span>
+            </div>
+            <div class="note-detail-date">{{ fmtDateShort(store.viewingNote.created_at) }}</div>
           </div>
-          <div class="note-detail-date">{{ fmtDateShort(store.viewingNote.created_at) }}</div>
           <div v-if="store.viewingNote.tags && store.viewingNote.tags.length" class="tag-row">
             <span class="tag" v-for="t in store.viewingNote.tags" :key="t">{{ t }}</span>
           </div>

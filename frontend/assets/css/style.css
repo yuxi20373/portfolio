@@ -575,6 +575,51 @@ textarea {
   font-size: 16px;
 }
 
+/* 首頁側欄最上面的頭貼+Displayname(見 Sidebar.js 的 'home' 分支)- 點下去
+   直接進編輯帳號畫面,跟主圖是同一個入口。 */
+.sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 12px 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.sidebar-profile:hover {
+  background: var(--accent-soft);
+}
+
+.sidebar-profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.sidebar-profile-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sidebar-bg);
+  color: var(--text-muted);
+}
+
+.sidebar-profile-avatar-fallback svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sidebar-profile-name {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Quick scratchpad checklist, Notes page sidebar (see Sidebar.js's 'notes'
    branch) - a colored box distinct from the rest of the drawer. */
 .memo-box {
@@ -3105,6 +3150,41 @@ select {
   /* hero/rainy/sunny all render 30% smaller than the wrap box */
 }
 
+/* 首頁主圖上的狀態文字(見 ProfileView.js 的 status 欄位),對話泡泡樣式,
+   飄在主圖右上方,尾巴指向主圖。純展示,不能在這裡編輯。 */
+.home-status-bubble {
+  position: absolute;
+  top: 6%;
+  right: 2%;
+  max-width: 65%;
+  z-index: 2;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 12px rgba(61, 57, 41, 0.12);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text);
+  text-align: left;
+  white-space: normal;
+  word-break: break-word;
+  pointer-events: none;
+}
+
+.home-status-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  left: 22px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+
 .home-hero-wrap.home-hero-fallback {
   border-radius: 28px;
   background: linear-gradient(135deg, var(--accent-soft), var(--sidebar-bg));
@@ -3617,6 +3697,24 @@ select {
   font-size: 12.5px;
   color: var(--text-muted);
   margin-bottom: 6px;
+}
+
+/* 「Shared with XX」跟日期同一行(見 NotesView.js note-detail),兩者都
+   不需要各自的 margin 了,靠這個 row 的 gap 控制間距。 */
+.note-detail-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.note-detail-meta-row .note-shared-by {
+  margin-bottom: 0;
+}
+
+.note-detail-meta-row .note-detail-date {
+  margin-top: 0;
+  white-space: nowrap;
 }
 
 .notes-shared-section {
