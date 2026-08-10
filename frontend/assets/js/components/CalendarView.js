@@ -238,12 +238,6 @@ export default {
     </div>
 
     <div v-if="selectedDate" class="day-detail">
-      <h3 class="day-detail-heading clickable" title="Open the Notes page" @click="store.view = 'notes'">Notes</h3>
-      <div v-if="!dayNotes.length" class="hint">No notes on this day</div>
-      <div v-for="n in dayNotes" :key="n.id" class="day-card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id)">
-        <div class="day-card-title">{{ n.title }}</div>
-      </div>
-
       <h3 class="day-detail-heading row between">
         <span>Events</span>
         <button class="icon-btn" title="Add event/reminder" @click="toggleAddEvent" v-html="icons.plus"></button>
@@ -269,6 +263,12 @@ export default {
         <span class="event-card-title">{{ ev.title }}</span>
         <span v-if="ev.kind === 'reminder' && ev.remind_at" class="event-card-time">{{ fmtEventTime(ev.remind_at) }}</span>
         <button class="mini-icon-btn" title="Delete" @click="removeEvent(ev.id)">×</button>
+      </div>
+
+      <h3 class="day-detail-heading clickable" title="Open the Notes page" @click="store.view = 'notes'">Notes</h3>
+      <div v-if="!dayNotes.length" class="hint">No notes on this day</div>
+      <div v-for="n in dayNotes" :key="n.id" class="day-card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id)">
+        <div class="day-card-title">{{ n.title }}</div>
       </div>
     </div>
   </div>
