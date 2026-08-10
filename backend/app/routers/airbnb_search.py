@@ -64,12 +64,18 @@ ALLOWED_CURRENCIES = {
 }
 
 
+# 使用者可以自己選要爬幾筆(見前端 HotelSearchView.js),但還是要有個上限,
+# 不然打錯數字可能不小心燒光整個月的 Apify 額度(PAY_PER_EVENT,$0.005/筆)。
+MAX_LISTINGS_CAP = 500
+
+
 class AirbnbSearchCreate(BaseModel):
     locations: List[str]
     check_in_date: str  # "YYYY-MM-DD"
     check_out_date: str
     adults: int = 1
     currency: str = "USD"
+    max_listings: Optional[int] = None  # None = 用 settings.airbnb_search_total_limit
 
 
 def _location_key(locations: List[str]) -> str:
@@ -129,6 +135,7 @@ def _job_dict(row: models.AirbnbSearch) -> dict:
         "check_out_date": row.check_out.isoformat(),
         "adults": row.adults,
         "currency": row.currency,
+        "max_listings": row.max_listings,
         "status": row.status,
         "error_message": row.error_message,
         "hotel_count": len(results) if row.status == "done" else None,
@@ -138,7 +145,9 @@ def _job_dict(row: models.AirbnbSearch) -> dict:
     }
 
 
-def _trigger_body(locations: List[str], check_in_date: str, check_out_date: str, adults: int, currency: str) -> dict:
+def _trigger_body(
+    locations: List[str], check_in_date: str, check_out_date: str, adults: int, currency: str, max_listings: int
+) -> dict:
     return {
         "locationQueries": locations,
         "checkIn": check_in_date,
@@ -146,8 +155,10 @@ def _trigger_body(locations: List[str], check_in_date: str, check_out_date: str,
         "adults": adults,
         "currency": currency,
         "skipDetailPages": True,
-        "maxListings": settings.airbnb_search_total_limit,
-        "maxRequestsPerCrawl": settings.airbnb_search_max_requests,
+        "maxListings": max_listings,
+        # 用比較大的當保底,避免爬的筆數要求高、但 request 上限卡住讓它抓不滿
+        # (見 config.py 的 airbnb_search_max_requests 說明)。
+        "maxRequestsPerCrawl": max(settings.airbnb_search_max_requests, max_listings),
     }
 
 
@@ -155,7 +166,15 @@ def _trigger_body(locations: List[str], check_in_date: str, check_out_date: str,
 # Bright Data 的 trigger 偶爾要等 45-60 秒以上,但還是丟 background task 做,
 # 理由不變:POST /searches 本身不該卡著等一個外部服務,前端本來就是每 3 秒
 # 輪詢一次,pending 狀態直接復用「還在忙」的輪詢邏輯。
-def _run_trigger(row_id: int, locations: List[str], check_in_date: str, check_out_date: str, adults: int, currency: str):
+def _run_trigger(
+    row_id: int,
+    locations: List[str],
+    check_in_date: str,
+    check_out_date: str,
+    adults: int,
+    currency: str,
+    max_listings: int,
+):
     db = SessionLocal()
     try:
         row = db.query(models.AirbnbSearch).get(row_id)
@@ -165,7 +184,7 @@ def _run_trigger(row_id: int, locations: List[str], check_in_date: str, check_ou
             r = requests.post(
                 f"{_BASE_URL}/acts/{settings.apify_airbnb_actor_id}/runs",
                 params=_params(),
-                json=_trigger_body(locations, check_in_date, check_out_date, adults, currency),
+                json=_trigger_body(locations, check_in_date, check_out_date, adults, currency, max_listings),
                 timeout=120,
             )
             r.raise_for_status()
@@ -192,6 +211,10 @@ def create_search(
     if currency not in ALLOWED_CURRENCIES:
         raise HTTPException(status_code=422, detail=f"unsupported currency, must be one of {sorted(ALLOWED_CURRENCIES)}")
 
+    max_listings = payload.max_listings if payload.max_listings is not None else settings.airbnb_search_total_limit
+    if not (1 <= max_listings <= MAX_LISTINGS_CAP):
+        raise HTTPException(status_code=422, detail=f"max_listings must be between 1 and {MAX_LISTINGS_CAP}")
+
     check_in = date.fromisoformat(payload.check_in_date)
     check_out = date.fromisoformat(payload.check_out_date)
     location_key = _location_key(payload.locations)
@@ -205,6 +228,7 @@ def create_search(
             models.AirbnbSearch.check_out == check_out,
             models.AirbnbSearch.adults == payload.adults,
             models.AirbnbSearch.currency == currency,
+            models.AirbnbSearch.max_listings == max_listings,
             models.AirbnbSearch.status == "done",
             models.AirbnbSearch.created_at >= cutoff,
         )
@@ -220,6 +244,7 @@ def create_search(
         check_out=check_out,
         adults=payload.adults,
         currency=currency,
+        max_listings=max_listings,
         status="pending",
         user_id=user.id,
     )
@@ -228,7 +253,14 @@ def create_search(
     db.refresh(row)
 
     background_tasks.add_task(
-        _run_trigger, row.id, payload.locations, payload.check_in_date, payload.check_out_date, payload.adults, currency
+        _run_trigger,
+        row.id,
+        payload.locations,
+        payload.check_in_date,
+        payload.check_out_date,
+        payload.adults,
+        currency,
+        max_listings,
     )
     return _job_dict(row)
 

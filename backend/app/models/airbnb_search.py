@@ -46,6 +46,10 @@ class AirbnbSearch(Base):
     infants = Column(Integer, nullable=False, default=0)
     pets = Column(Integer, nullable=False, default=0)
     currency = Column(String(10), nullable=False, default="USD")
+    # 使用者自己選要爬幾筆(見前端 HotelSearchView.js 的 maxListings 欄位),
+    # 存起來是為了快取比對 - 同樣地點/日期/人數/幣別但要的筆數不同,不能共用
+    # 同一份快取結果(舊的可能筆數不夠)。
+    max_listings = Column(Integer, nullable=False, default=200)
     snapshot_id = Column(String(64), nullable=True)  # Apify run id
     status = Column(String(20), nullable=False, default="pending")  # "pending" | "scraping" | "done" | "failed"
     results = Column(Text, nullable=True)  # JSON-encoded list

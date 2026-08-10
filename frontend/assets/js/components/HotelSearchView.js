@@ -77,6 +77,10 @@ export default {
     const checkOutDate = ref("");
     const adults = ref(1);
     const currency = ref("USD");
+    // 要爬幾筆(對應 Apify actor 的 maxListings)- 後端上限 500(見
+    // routers/airbnb_search.py 的 MAX_LISTINGS_CAP),預設給小一點(20),
+    // 每筆都要算 Apify 額度,不要預設就是 200。
+    const maxListings = ref(20);
 
     // --- 台灣縣市勾選 popover - 跟 TagPicker.js 同一套邏輯(勾/取消勾就是
     // 從 locationsText 這個以換行分隔的文字裡加一行/刪一行),只是 TagPicker
@@ -126,6 +130,7 @@ export default {
         check_out_date: checkOutDate.value,
         adults: Number(adults.value) || 1,
         currency: currency.value,
+        max_listings: Number(maxListings.value) || 20,
       });
     }
 
@@ -195,7 +200,7 @@ export default {
 
     return {
       store, icons, STATUS_LABELS, TOP_N, TAIWAN_LOCATIONS, CURRENCIES,
-      locationsText, checkInDate, checkOutDate, adults, currency, onCheckInChange, approxTwd,
+      locationsText, checkInDate, checkOutDate, adults, currency, maxListings, onCheckInChange, approxTwd,
       showLocationPicker, selectedTaiwanLocations, toggleTaiwanLocation,
       canSearch, search,
       activeJob, isBusy,
@@ -241,6 +246,10 @@ export default {
         <select v-model="currency" class="note-editor-title-input">
           <option v-for="c in CURRENCIES" :key="c.code" :value="c.code">{{ c.label }}</option>
         </select>
+      </div>
+      <div class="hotel-search-field hotel-search-field-narrow">
+        <label title="要爬幾筆(消耗 Apify 額度)">要爬幾筆</label>
+        <input type="number" min="1" max="500" v-model="maxListings" class="note-editor-title-input" />
       </div>
       <button class="btn hotel-search-btn" :disabled="!canSearch" @click="search">
         <span v-if="store.airbnbSearchPolling" class="spinner"></span>

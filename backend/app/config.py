@@ -92,8 +92,10 @@ class Settings(BaseSettings):
     # 存 cache。 ---
     apify_api_token: str = ""
     apify_airbnb_actor_id: str = "automation-lab~airbnb-listing"
-    # 單次搜尋最多收幾筆(對應 actor 的 maxListings)- 免費方案每月 $5 平台額度,
-    # 200 筆/次大概可以搜 30-40 次(依實際用量而定)。
+    # 單次搜尋最多收幾筆(對應 actor 的 maxListings)- 前端現在可以自己選
+    # (見 routers/airbnb_search.py 的 AirbnbSearchCreate.max_listings),這個
+    # 只是沒帶的話的預設值。免費方案每月 $5 平台額度,PAY_PER_EVENT
+    # $0.005/筆,200 筆/次大概可以搜 4-5 次。
     airbnb_search_total_limit: int = 200
     # 對應 actor 的 maxRequestsPerCrawl - 避免爬蟲卡在分頁/價格區間二分搜尋
     # 燒過多 request 額度,跟 airbnb_search_total_limit 是各自獨立的上限。
