@@ -229,6 +229,7 @@ export default {
     function closeNote() {
       store.closeNoteView();
       editingNote.value = false;
+      showSharePicker.value = false;
     }
 
     function startEditNote() {
@@ -239,6 +240,7 @@ export default {
       editNoteColor.value = store.viewingNote.color || "";
       editNotePreview.value = false;
       editNoteHelp.value = false;
+      showSharePicker.value = false;
       editingNote.value = true;
     }
 
@@ -298,6 +300,12 @@ export default {
         const res = await store.shareNote(store.viewingNote.id, username);
         shareSuccessMsg.value = `已分享給 ${res.shared_with.display_name || res.shared_with.username}`;
         shareUsername.value = "";
+        // 不用整個重抓筆記,直接把新分享的對象塞進目前顯示的清單裡,畫面
+        // 上的「Shared with」馬上就會更新(見 note-detail 那段的顯示)。
+        if (!store.viewingNote.shared_with) store.viewingNote.shared_with = [];
+        if (!store.viewingNote.shared_with.some((u) => u.username === res.shared_with.username)) {
+          store.viewingNote.shared_with.push(res.shared_with);
+        }
       } catch (e) {
         shareError.value = e.message;
       } finally {
@@ -580,26 +588,6 @@ export default {
               <button class="icon-btn" title="Markdown syntax help" @click="editNoteHelp = !editNoteHelp">?</button>
               <div v-if="editNoteHelp" class="note-help-popover" v-html="MARKDOWN_HELP"></div>
             </div>
-            <div class="note-help-wrap">
-              <button class="icon-btn" title="Share this note" @click="toggleSharePicker" v-html="icons.send"></button>
-              <div v-if="showSharePicker" class="note-help-popover share-popover">
-                <div class="share-row">
-                  <input type="text" v-model="shareUsername" class="note-editor-title-input" style="margin-bottom:0;" placeholder="username" @keyup.enter="submitShare" />
-                  <button class="btn" :disabled="sharing || !shareUsername.trim()" @click="submitShare">
-                    <span v-if="sharing" class="spinner"></span><span v-else>Share</span>
-                  </button>
-                </div>
-                <div v-if="shareError" class="share-msg share-msg-error">{{ shareError }}</div>
-                <div v-if="shareSuccessMsg" class="share-msg share-msg-success">{{ shareSuccessMsg }}</div>
-                <div v-if="store.recentShareTargets.length" class="share-recent">
-                  <button v-for="t in store.recentShareTargets" :key="t.username" type="button" class="share-recent-item" :title="'Share with ' + (t.display_name || t.username)" @click="shareCurrentNote(t.username)">
-                    <img v-if="avatarSrc(t.avatar)" :src="avatarSrc(t.avatar)" alt="" class="share-recent-avatar" @error="onAvatarImgError" />
-                    <span v-else class="share-recent-avatar share-recent-avatar-fallback" v-html="icons.user"></span>
-                    <span class="share-recent-name">{{ t.display_name || t.username }}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
           <textarea v-if="!editNotePreview" ref="noteContentTextarea" v-model="editNoteContent" class="note-editor-textarea note-write-textarea" rows="10"></textarea>
           <div v-else class="markdown-body note-editor-preview" v-html="renderMarkdown(editNoteContent)"></div>
@@ -622,6 +610,26 @@ export default {
                 <button class="icon-btn favorite-btn" :class="{active: store.viewingNote.is_favorited}" title="Favorite"
                         @click="store.toggleNoteFavorite(store.viewingNote.id)"
                         v-html="store.viewingNote.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
+                <div class="note-help-wrap">
+                  <button class="icon-btn" title="Share this note" @click="toggleSharePicker" v-html="icons.send"></button>
+                  <div v-if="showSharePicker" class="note-help-popover share-popover">
+                    <div class="share-row">
+                      <input type="text" v-model="shareUsername" class="note-editor-title-input" style="margin-bottom:0;" placeholder="username" @keyup.enter="submitShare" />
+                      <button class="btn" :disabled="sharing || !shareUsername.trim()" @click="submitShare">
+                        <span v-if="sharing" class="spinner"></span><span v-else>Share</span>
+                      </button>
+                    </div>
+                    <div v-if="shareError" class="share-msg share-msg-error">{{ shareError }}</div>
+                    <div v-if="shareSuccessMsg" class="share-msg share-msg-success">{{ shareSuccessMsg }}</div>
+                    <div v-if="store.recentShareTargets.length" class="share-recent">
+                      <button v-for="t in store.recentShareTargets" :key="t.username" type="button" class="share-recent-item" :title="'Share with ' + (t.display_name || t.username)" @click="shareCurrentNote(t.username)">
+                        <img v-if="avatarSrc(t.avatar)" :src="avatarSrc(t.avatar)" alt="" class="share-recent-avatar" @error="onAvatarImgError" />
+                        <span v-else class="share-recent-avatar share-recent-avatar-fallback" v-html="icons.user"></span>
+                        <span class="share-recent-name">{{ t.display_name || t.username }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
                 <button class="icon-btn" title="Delete" @click="removeNote" v-html="icons.trash"></button>
               </template>
               <button class="icon-btn" title="Back to notes" @click="closeNote" v-html="icons.close"></button>
@@ -631,6 +639,11 @@ export default {
             <img v-if="avatarSrc(store.viewingNote.shared_by.avatar)" :src="avatarSrc(store.viewingNote.shared_by.avatar)" alt="" class="share-recent-avatar" @error="onAvatarImgError" />
             <span v-else class="share-recent-avatar share-recent-avatar-fallback" v-html="icons.user"></span>
             Shared by {{ store.viewingNote.shared_by.display_name || store.viewingNote.shared_by.username }}
+          </div>
+          <div v-if="store.viewingNote.shared_with && store.viewingNote.shared_with.length" class="note-shared-by">
+            <span v-html="icons.send"></span>
+            Shared with
+            <span v-for="(u, i) in store.viewingNote.shared_with" :key="u.username">{{ u.display_name || u.username }}<span v-if="i < store.viewingNote.shared_with.length - 1">, </span></span>
           </div>
           <div class="note-detail-date">{{ fmtDateShort(store.viewingNote.created_at) }}</div>
           <div v-if="store.viewingNote.tags && store.viewingNote.tags.length" class="tag-row">
@@ -694,7 +707,10 @@ export default {
           <div class="notes-date-sep">{{ fmtDateLabel(group.date) }}</div>
           <div class="notes-grid">
             <div v-for="n in group.notes" :key="n.id" class="card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id, group.notes.map(x => x.id))">
-              <div class="day-card-title">{{ n.title }}</div>
+              <div class="day-card-title">
+                {{ n.title }}
+                <span v-if="n.shared_with && n.shared_with.length" class="note-shared-badge" :title="'Shared with ' + n.shared_with.map(u => u.display_name || u.username).join(', ')" v-html="icons.send"></span>
+              </div>
               <div v-if="n.tags && n.tags.length" class="tag-row">
                 <span class="tag tag-solid" v-for="t in n.tags" :key="t">{{ t }}</span>
               </div>
@@ -707,7 +723,10 @@ export default {
           <div class="notes-date-sep">{{ group.tag }}</div>
           <div class="notes-grid">
             <div v-for="n in group.notes" :key="n.id" class="card clickable" :class="n.color ? 'note-color-' + n.color : ''" @click="openNote(n.id, group.notes.map(x => x.id))">
-              <div class="day-card-title">{{ n.title }}</div>
+              <div class="day-card-title">
+                {{ n.title }}
+                <span v-if="n.shared_with && n.shared_with.length" class="note-shared-badge" :title="'Shared with ' + n.shared_with.map(u => u.display_name || u.username).join(', ')" v-html="icons.send"></span>
+              </div>
             </div>
           </div>
         </template>
@@ -718,7 +737,7 @@ export default {
         <div class="notes-shared-header" :class="{open: sharedSectionOpen}" @click="toggleSharedSection">
           <span class="notes-shared-chevron" v-html="icons.chevronRight"></span>
           <span v-html="icons.send"></span>
-          <span>Shared with me</span>
+          <span>Shared</span>
         </div>
         <template v-if="sharedSectionOpen">
           <div class="notes-grid">

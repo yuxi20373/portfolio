@@ -56,8 +56,8 @@ class ShareCreate(BaseModel):
     username: str
 
 
-def _note_dict(n: models.Note):
-    return {
+def _note_dict(n: models.Note, shared_with: Optional[list] = None):
+    d = {
         "id": n.id,
         "title": n.title,
         "content": n.content,
@@ -66,10 +66,31 @@ def _note_dict(n: models.Note):
         "is_favorited": n.is_favorited,
         "created_at": n.created_at,
     }
+    if shared_with is not None:
+        d["shared_with"] = shared_with
+    return d
 
 
 def _user_dict(u: models.User) -> dict:
     return {"username": u.username, "display_name": u.display_name, "avatar": u.avatar}
+
+
+def _shares_by_note(db: DBSession, note_ids: list[int]) -> dict:
+    """note_id -> [user_dict, ...] - 一次查完一批筆記的分享對象,不要每則筆記
+    各查一次(N+1)。概念是「共享的文章」,不只收件人看得到,筆記本人自己
+    的列表/詳情頁也要能看到這篇被分享給誰(見 list_notes/get_note)。"""
+    if not note_ids:
+        return {}
+    rows = (
+        db.query(models.NoteShare, models.User)
+        .join(models.User, models.NoteShare.shared_with_user_id == models.User.id)
+        .filter(models.NoteShare.note_id.in_(note_ids))
+        .all()
+    )
+    result = {}
+    for share, u in rows:
+        result.setdefault(share.note_id, []).append(_user_dict(u))
+    return result
 
 
 def _get_owned_note(db: DBSession, note_id: int, user: models.User) -> models.Note:
@@ -113,7 +134,8 @@ def list_notes(
     notes = q.order_by(models.Note.created_at.desc()).all()
     if tag:
         notes = [n for n in notes if tag in (n.tags or [])]
-    return [_note_dict(n) for n in notes]
+    shares = _shares_by_note(db, [n.id for n in notes])
+    return [_note_dict(n, shares.get(n.id, [])) for n in notes]
 
 
 @router.post("")
@@ -319,9 +341,10 @@ def recent_share_targets(db: DBSession = Depends(get_db), user: models.User = De
 @router.get("/{note_id}")
 def get_note(note_id: int, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)):
     n = _get_viewable_note(db, note_id, user)
-    d = _note_dict(n)
-    d["is_owner"] = n.user_id == user.id
-    if not d["is_owner"]:
+    is_owner = n.user_id == user.id
+    d = _note_dict(n, _shares_by_note(db, [n.id]).get(n.id, []) if is_owner else None)
+    d["is_owner"] = is_owner
+    if not is_owner:
         owner = db.query(models.User).get(n.user_id)
         d["shared_by"] = _user_dict(owner)
     return d
