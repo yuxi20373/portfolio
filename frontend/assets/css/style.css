@@ -1643,6 +1643,15 @@ textarea {
   color: var(--accent);
 }
 
+/* USD 搜尋時的固定匯率換算參考(見 HotelSearchView.js 的 approxTwd)- 不是
+   實際報價,字體/顏色都比主價格弱化,避免看起來像官方換算。 */
+.hotel-card-price-approx {
+  display: block;
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
 .hotel-card-link {
   font-size: 12px;
   padding: 6px 10px;

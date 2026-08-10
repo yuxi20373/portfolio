@@ -13,6 +13,10 @@ import { icons } from "../icons.js";
 const STATUS_LABELS = { pending: "等待中", scraping: "爬蟲抓取中", done: "完成", failed: "失敗" };
 const TOP_N = 30;
 
+// Apify 不支援 TWD 報價(見上面 CURRENCIES 的說明),搜 USD 時額外顯示一個
+// 換算參考 - 固定匯率,不即時抓,使用者要求「差不多就好」。
+const USD_TO_TWD = 32.25;
+
 // Apify actor 的 currency input 支援的幣別(見 backend/app/routers/airbnb_search.py
 // 的 ALLOWED_CURRENCIES)- 沒有 TWD,Apify 本身就不支援,不是我們選擇不做。
 const CURRENCIES = [
@@ -141,6 +145,12 @@ export default {
     function ratingOf(h) {
       return h.rating;
     }
+    // USD 才換算(唯一有匯率的方向) - 四捨五入到整數,只是參考用。
+    function approxTwd(h) {
+      if (h.currency !== "USD") return null;
+      const p = priceOf(h);
+      return p == null ? null : Math.round(p * USD_TO_TWD);
+    }
 
     const allResults = computed(() => activeJob.value?.results || []);
 
@@ -185,7 +195,7 @@ export default {
 
     return {
       store, icons, STATUS_LABELS, TOP_N, TAIWAN_LOCATIONS, CURRENCIES,
-      locationsText, checkInDate, checkOutDate, adults, currency, onCheckInChange,
+      locationsText, checkInDate, checkOutDate, adults, currency, onCheckInChange, approxTwd,
       showLocationPicker, selectedTaiwanLocations, toggleTaiwanLocation,
       canSearch, search,
       activeJob, isBusy,
@@ -284,7 +294,10 @@ export default {
               <span class="hotel-card-rating"><span v-html="icons.star"></span> {{ h.rating ?? '—' }}<span v-if="h.review_count"> ({{ h.review_count }})</span></span>
             </div>
             <div class="hotel-card-footer">
-              <div class="hotel-card-price">{{ h.currency }} {{ h.price_per_night ?? h.total_price }}<span v-if="h.price_per_night"> /晚</span></div>
+              <div class="hotel-card-price">
+                {{ h.currency }} {{ h.price_per_night ?? h.total_price }}<span v-if="h.price_per_night"> /晚</span>
+                <span v-if="approxTwd(h) != null" class="hotel-card-price-approx">≈NT$ {{ approxTwd(h) }}</span>
+              </div>
               <a :href="h.url" target="_blank" rel="noopener" class="btn secondary hotel-card-link">查看詳情</a>
             </div>
           </div>
