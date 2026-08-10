@@ -13,6 +13,31 @@ import { icons } from "../icons.js";
 const STATUS_LABELS = { pending: "等待中", scraping: "爬蟲抓取中", done: "完成", failed: "失敗" };
 const TOP_N = 30;
 
+// Apify actor 的 currency input 支援的幣別(見 backend/app/routers/airbnb_search.py
+// 的 ALLOWED_CURRENCIES)- 沒有 TWD,Apify 本身就不支援,不是我們選擇不做。
+const CURRENCIES = [
+  { code: "USD", label: "USD 美元" },
+  { code: "JPY", label: "JPY 日圓" },
+  { code: "CNY", label: "CNY 人民幣" },
+  { code: "KRW", label: "KRW 韓元" },
+  { code: "EUR", label: "EUR 歐元" },
+  { code: "GBP", label: "GBP 英鎊" },
+  { code: "AUD", label: "AUD 澳幣" },
+  { code: "CAD", label: "CAD 加幣" },
+  { code: "BRL", label: "BRL 巴西里拉" },
+  { code: "INR", label: "INR 印度盧比" },
+  { code: "MXN", label: "MXN 墨西哥披索" },
+  { code: "CHF", label: "CHF 瑞士法郎" },
+  { code: "SEK", label: "SEK 瑞典克朗" },
+  { code: "NOK", label: "NOK 挪威克朗" },
+  { code: "DKK", label: "DKK 丹麥克朗" },
+  { code: "PLN", label: "PLN 波蘭茲羅提" },
+  { code: "CZK", label: "CZK 捷克克朗" },
+  { code: "HUF", label: "HUF 匈牙利福林" },
+  { code: "RUB", label: "RUB 俄羅斯盧布" },
+  { code: "TRY", label: "TRY 土耳其里拉" },
+];
+
 // 台灣縣市快速勾選用(見下面的 showLocationPicker)- Apify 吃的是自由
 // 文字的 "City, Country" 格式,這份清單是自己定義的,跟 AsiaYo 那邊固定的
 // 14 個縣市無關(那個列表本來就缺南投,這裡不受它限制)。
@@ -47,6 +72,7 @@ export default {
     const checkInDate = ref("");
     const checkOutDate = ref("");
     const adults = ref(1);
+    const currency = ref("USD");
 
     // --- 台灣縣市勾選 popover - 跟 TagPicker.js 同一套邏輯(勾/取消勾就是
     // 從 locationsText 這個以換行分隔的文字裡加一行/刪一行),只是 TagPicker
@@ -95,6 +121,7 @@ export default {
         check_in_date: checkInDate.value,
         check_out_date: checkOutDate.value,
         adults: Number(adults.value) || 1,
+        currency: currency.value,
       });
     }
 
@@ -157,8 +184,8 @@ export default {
     }
 
     return {
-      store, icons, STATUS_LABELS, TOP_N, TAIWAN_LOCATIONS,
-      locationsText, checkInDate, checkOutDate, adults, onCheckInChange,
+      store, icons, STATUS_LABELS, TOP_N, TAIWAN_LOCATIONS, CURRENCIES,
+      locationsText, checkInDate, checkOutDate, adults, currency, onCheckInChange,
       showLocationPicker, selectedTaiwanLocations, toggleTaiwanLocation,
       canSearch, search,
       activeJob, isBusy,
@@ -199,6 +226,12 @@ export default {
         <label>Adults</label>
         <input type="number" min="1" v-model="adults" class="note-editor-title-input" />
       </div>
+      <div class="hotel-search-field hotel-search-field-narrow">
+        <label>Currency</label>
+        <select v-model="currency" class="note-editor-title-input">
+          <option v-for="c in CURRENCIES" :key="c.code" :value="c.code">{{ c.label }}</option>
+        </select>
+      </div>
       <button class="btn hotel-search-btn" :disabled="!canSearch" @click="search">
         <span v-if="store.airbnbSearchPolling" class="spinner"></span>
         <span v-else v-html="icons.search"></span>
@@ -223,11 +256,11 @@ export default {
 
       <div v-if="activeJob.status === 'done' && allResults.length" class="hotel-filter-row">
         <div class="hotel-search-field hotel-search-field-narrow">
-          <label>Min price</label>
+          <label>Min price ({{ activeJob.currency }})</label>
           <input type="number" min="0" v-model="filterMinPrice" class="note-editor-title-input" placeholder="不限" />
         </div>
         <div class="hotel-search-field hotel-search-field-narrow">
-          <label>Max price</label>
+          <label>Max price ({{ activeJob.currency }})</label>
           <input type="number" min="0" v-model="filterMaxPrice" class="note-editor-title-input" placeholder="不限" />
         </div>
         <button v-if="filterMinPrice || filterMaxPrice" class="btn secondary" @click="filterMinPrice = ''; filterMaxPrice = ''">清除篩選</button>

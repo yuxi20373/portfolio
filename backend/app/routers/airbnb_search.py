@@ -56,11 +56,20 @@ def _params(**extra):
     return {"token": settings.apify_api_token, **extra}
 
 
+# Apify actor 的 currency input 支援的幣別(見 input schema 的 enum)- 沒有
+# TWD,這是 Apify 自己的限制,不是我們這邊選擇不支援。
+ALLOWED_CURRENCIES = {
+    "USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CNY", "KRW", "BRL", "INR",
+    "MXN", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "HUF", "RUB", "TRY",
+}
+
+
 class AirbnbSearchCreate(BaseModel):
     locations: List[str]
     check_in_date: str  # "YYYY-MM-DD"
     check_out_date: str
     adults: int = 1
+    currency: str = "USD"
 
 
 def _location_key(locations: List[str]) -> str:
@@ -81,12 +90,14 @@ def _parse_price(s: Optional[str]) -> Optional[float]:
     return float(m.group().replace(",", "")) if m else None
 
 
-def _extract_listing(raw: dict, nights: int) -> Optional[dict]:
+def _extract_listing(raw: dict, nights: int, currency: str) -> Optional[dict]:
     """Apify 一筆 raw record 的欄位形狀跟 Bright Data 完全不同 - title/price/
     rating 都是巢狀物件,價格要自己轉數字、算平均每晚價(actor 本身只給整段
     住宿的總價,不是每晚價)。skipDetailPages=true(見 _trigger_body)模式下
     沒有 guests/amenities/is_guest_favorite 這些要進 detail page 才有的欄位,
-    固定回 None,前端本來就是 v-if 顯示,缺欄位不會壞掉。"""
+    固定回 None,前端本來就是 v-if 顯示,缺欄位不會壞掉。currency 是這次搜尋
+    實際請求 Apify 用的幣別(見 AirbnbSearchCreate.currency),不是從 raw 資料
+    反推的 - Apify 的 price 字串只有符號沒有幣別代碼。"""
     if "id" not in raw:
         return None
     price = raw.get("price") or {}
@@ -98,7 +109,7 @@ def _extract_listing(raw: dict, nights: int) -> Optional[dict]:
         "image": raw.get("thumbnail"),
         "price_per_night": round(total / nights, 2) if total and nights else None,
         "total_price": total,
-        "currency": "USD",
+        "currency": currency,
         "rating": rating.get("guestSatisfaction"),
         "review_count": rating.get("reviewsCount"),
         "guests": None,
@@ -117,6 +128,7 @@ def _job_dict(row: models.AirbnbSearch) -> dict:
         "check_in_date": row.check_in.isoformat(),
         "check_out_date": row.check_out.isoformat(),
         "adults": row.adults,
+        "currency": row.currency,
         "status": row.status,
         "error_message": row.error_message,
         "hotel_count": len(results) if row.status == "done" else None,
@@ -126,13 +138,13 @@ def _job_dict(row: models.AirbnbSearch) -> dict:
     }
 
 
-def _trigger_body(locations: List[str], check_in_date: str, check_out_date: str, adults: int) -> dict:
+def _trigger_body(locations: List[str], check_in_date: str, check_out_date: str, adults: int, currency: str) -> dict:
     return {
         "locationQueries": locations,
         "checkIn": check_in_date,
         "checkOut": check_out_date,
         "adults": adults,
-        "currency": "USD",  # actor 的 currency enum 沒有 TWD
+        "currency": currency,
         "skipDetailPages": True,
         "maxListings": settings.airbnb_search_total_limit,
         "maxRequestsPerCrawl": settings.airbnb_search_max_requests,
@@ -143,7 +155,7 @@ def _trigger_body(locations: List[str], check_in_date: str, check_out_date: str,
 # Bright Data 的 trigger 偶爾要等 45-60 秒以上,但還是丟 background task 做,
 # 理由不變:POST /searches 本身不該卡著等一個外部服務,前端本來就是每 3 秒
 # 輪詢一次,pending 狀態直接復用「還在忙」的輪詢邏輯。
-def _run_trigger(row_id: int, locations: List[str], check_in_date: str, check_out_date: str, adults: int):
+def _run_trigger(row_id: int, locations: List[str], check_in_date: str, check_out_date: str, adults: int, currency: str):
     db = SessionLocal()
     try:
         row = db.query(models.AirbnbSearch).get(row_id)
@@ -153,7 +165,7 @@ def _run_trigger(row_id: int, locations: List[str], check_in_date: str, check_ou
             r = requests.post(
                 f"{_BASE_URL}/acts/{settings.apify_airbnb_actor_id}/runs",
                 params=_params(),
-                json=_trigger_body(locations, check_in_date, check_out_date, adults),
+                json=_trigger_body(locations, check_in_date, check_out_date, adults, currency),
                 timeout=120,
             )
             r.raise_for_status()
@@ -176,6 +188,9 @@ def create_search(
 ):
     if not payload.locations:
         raise HTTPException(status_code=422, detail="locations must not be empty")
+    currency = payload.currency.upper()
+    if currency not in ALLOWED_CURRENCIES:
+        raise HTTPException(status_code=422, detail=f"unsupported currency, must be one of {sorted(ALLOWED_CURRENCIES)}")
 
     check_in = date.fromisoformat(payload.check_in_date)
     check_out = date.fromisoformat(payload.check_out_date)
@@ -189,6 +204,7 @@ def create_search(
             models.AirbnbSearch.check_in == check_in,
             models.AirbnbSearch.check_out == check_out,
             models.AirbnbSearch.adults == payload.adults,
+            models.AirbnbSearch.currency == currency,
             models.AirbnbSearch.status == "done",
             models.AirbnbSearch.created_at >= cutoff,
         )
@@ -203,7 +219,7 @@ def create_search(
         check_in=check_in,
         check_out=check_out,
         adults=payload.adults,
-        currency="USD",
+        currency=currency,
         status="pending",
         user_id=user.id,
     )
@@ -212,7 +228,7 @@ def create_search(
     db.refresh(row)
 
     background_tasks.add_task(
-        _run_trigger, row.id, payload.locations, payload.check_in_date, payload.check_out_date, payload.adults
+        _run_trigger, row.id, payload.locations, payload.check_in_date, payload.check_out_date, payload.adults, currency
     )
     return _job_dict(row)
 
@@ -268,7 +284,7 @@ def get_search(
         sr.raise_for_status()
         raw_records = sr.json()
         nights = (row.check_out - row.check_in).days
-        listings = [x for x in (_extract_listing(r, nights) for r in raw_records) if x]
+        listings = [x for x in (_extract_listing(r, nights, row.currency) for r in raw_records) if x]
         row.results = json.dumps(listings)
         row.status = "done"
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
