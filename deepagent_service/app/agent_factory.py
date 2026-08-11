@@ -15,6 +15,7 @@ from deepagents.middleware.subagents import SubAgent
 
 from .config import settings
 from .tools.web_search import web_search
+from .tools.create_da2 import create_da2, get_da2_thread
 
 AGENT_INSTRUCTIONS = (
     "You are a helpful AI assistant chatting with a user. Reply in the same "
@@ -79,7 +80,7 @@ def get_agent():
     global _agent
     if _agent is None:
         kwargs = dict(
-            tools=[web_search],
+            tools=[web_search, create_da2, get_da2_thread],
             system_prompt=AGENT_INSTRUCTIONS,
             model=_build_chat_model(),
             subagents=[WORKER_SUBAGENT],

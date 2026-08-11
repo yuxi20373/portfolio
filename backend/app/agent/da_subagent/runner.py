@@ -7,8 +7,49 @@ session (see agent_factory.py's AGENT_INSTRUCTIONS). The caller
 ChatSession.da_subagent_files.
 """
 
+from langchain_core.callbacks import BaseCallbackHandler
+
 from .agent_factory import get_agent
 from ..runner import _aggregate_usage, _last_text
+
+
+class _ToolCallCollector(BaseCallbackHandler):
+    """Ground truth for whether delegation actually happened this turn - the
+    model's own reply text can claim it delegated something without that
+    being true, so this prints every REAL tool invocation (including ones
+    made *inside* an isolated worker run, since LangGraph propagates
+    callbacks into nested subagent invocations automatically) straight to
+    the server console, instead of trusting the reply text. Tagged 1DA vs
+    worker via whether we're currently between a `task` tool's start and its
+    matching end (by run_id) - a flat list alone can't tell "1DA called
+    write_file itself" apart from "write_file was called inside the
+    delegated worker", since both share the same default tools.
+
+    Printed (not `logging`) so it's guaranteed visible in the running
+    server's stdout without needing any logging config this app doesn't have."""
+
+    def __init__(self):
+        self.calls: list[dict] = []
+        self._depth = 0
+        self._names_by_run_id: dict = {}
+
+    def on_tool_start(self, serialized, input_str, *, run_id=None, **kwargs):
+        name = serialized.get("name", "?")
+        self._names_by_run_id[run_id] = name
+        agent = "worker" if self._depth > 0 else "1DA"
+        self.calls.append({"agent": agent, "event": "call", "tool": name, "input": input_str})
+        print(f"[da_subagent tool:{agent}] {name}({input_str})")
+        if name == "task":
+            self._depth += 1
+
+    def on_tool_end(self, output, *, run_id=None, **kwargs):
+        was_task = self._names_by_run_id.pop(run_id, None) == "task"
+        agent = "1DA" if was_task else ("worker" if self._depth > 0 else "1DA")
+        preview = str(output)[:500]
+        self.calls.append({"agent": agent, "event": "result", "output": preview})
+        print(f"[da_subagent tool:{agent}]   -> {preview!r}")
+        if was_task:
+            self._depth = max(0, self._depth - 1)
 
 
 def run_turn(
@@ -17,9 +58,24 @@ def run_turn(
     agent = get_agent(model_name)
     input_messages = context_messages + [{"role": "user", "content": user_text}]
 
-    result = agent.invoke({"messages": input_messages, "files": files or {}})
+    collector = _ToolCallCollector()
+    result = agent.invoke(
+        {"messages": input_messages, "files": files or {}},
+        config={"callbacks": [collector]},
+    )
     all_messages = result.get("messages", [])
 
     reply = _last_text(all_messages)
     usage = _aggregate_usage(all_messages, len(input_messages), model_name)
+    # 判斷有沒有真的委派,看的是有沒有一次呼叫 task 工具(那本身就是委派這個
+    # 動作),不是看有沒有 agent=="worker" 的紀錄 - worker 被叫到之後如果它
+    # 自己不需要再用任何工具(直接就能回答),就不會有任何 agent=="worker"
+    # 的紀錄,但委派本身確實發生了,不能拿「worker 有沒有再用到工具」來判斷
+    # 「有沒有委派」,這是兩件事。
+    if any(c["event"] == "call" and c["tool"] == "task" for c in collector.calls):
+        print("[da_subagent] delegated to worker via task this turn")
+    elif collector.calls:
+        print("[da_subagent] tools were called, but never delegated to worker via task")
+    else:
+        print("[da_subagent] no tool calls this turn (answered directly)")
     return reply, usage, result.get("files", {})
