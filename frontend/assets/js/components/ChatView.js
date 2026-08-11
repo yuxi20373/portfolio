@@ -1,4 +1,4 @@
-const { ref, nextTick, watch } = window.Vue;
+const { ref, computed, nextTick, watch } = window.Vue;
 import { store } from "../store.js";
 import { renderMarkdown } from "../markdown.js";
 import { icons } from "../icons.js";
@@ -16,6 +16,37 @@ export default {
       if (!store.currentSessionId || !modelId) return;
       await store.switchModel(store.currentSessionId, modelId);
     }
+
+    // 三種模式的徽章顯示 - experimental_agent 優先於 agent_mode(兩者在後端
+    // 是互斥的,見 chat_service.py 的 _switch_mode/_switch_experimental_agent),
+    // 之後多加別種實驗性 agent,這裡不用改,名稱直接顯示 experimental_agent
+    // 的值。
+    const modeBadge = computed(() => {
+      const s = store.currentSession;
+      if (!s) return null;
+      if (s.experimental_agent) {
+        return {
+          cls: "experimental",
+          icon: icons.flame,
+          label: s.experimental_agent,
+          title: `Experimental deep agent (${s.experimental_agent}): full history + tools, may write files to a virtual /results/. Type /normal to switch back.`,
+        };
+      }
+      if (s.agent_mode) {
+        return {
+          cls: "agent",
+          icon: icons.bot,
+          label: "Deep Agent",
+          title: "Deep agent: full history + web search / wiki tools",
+        };
+      }
+      return {
+        cls: "",
+        icon: icons.chat,
+        label: "Normal",
+        title: "Normal chat: single-turn, no tools. Type /agent to switch.",
+      };
+    });
 
     async function scrollDown() {
       await nextTick();
@@ -58,16 +89,15 @@ export default {
 
     return {
       store, icons, draft, chatWindow, draftInput, autoGrow, send, renderMarkdown,
-      fmtTokens, fmtCost, showCompare, onModelChange,
+      fmtTokens, fmtCost, showCompare, onModelChange, modeBadge,
     };
   },
   template: `
   <div class="main-panel chat-panel">
     <div class="chat-toolbar" v-if="store.currentSession">
-      <span class="mode-badge" :class="{ agent: store.currentSession.agent_mode }"
-            :title="store.currentSession.agent_mode ? 'Deep agent: full history + web search / wiki tools' : 'Normal chat: single-turn, no tools. Type /agent to switch.'">
-        <span class="mode-badge-icon" v-html="store.currentSession.agent_mode ? icons.bot : icons.chat"></span>
-        {{ store.currentSession.agent_mode ? 'Deep Agent' : 'Normal' }}
+      <span class="mode-badge" :class="modeBadge.cls" :title="modeBadge.title">
+        <span class="mode-badge-icon" v-html="modeBadge.icon"></span>
+        {{ modeBadge.label }}
       </span>
       <select class="model-select" :value="store.currentSession.model" @change="onModelChange($event.target.value)">
         <option v-for="m in store.models" :key="m.id" :value="m.id">{{ m.recommended ? '★ ' : '' }}{{ m.name }}</option>

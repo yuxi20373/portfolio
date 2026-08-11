@@ -44,7 +44,17 @@ def build_chat_model(model_name: str = None):
     if settings.agent_model_provider == "openai":
         from langchain_openai import ChatOpenAI
 
-        return ChatOpenAI(model=model_name or settings.openai_model, api_key=settings.openai_api_key)
+        resolved_model = model_name or settings.openai_model
+        kwargs = dict(model=resolved_model, api_key=settings.openai_api_key)
+        if resolved_model.startswith("gpt-5"):
+            # gpt-5.x 是推理模型 - 搭配 function tools 用時,OpenAI 的
+            # /v1/chat/completions 端點會直接 400("Function tools with
+            # reasoning_effort are not supported")。明確關掉推理
+            # (reasoning_effort="none")就能正常用工具,不用整個換成非推理
+            # 模型 - 對日常對話/工具呼叫這種場景,不推理的影響通常很小,
+            # 差別主要在複雜數學/多步驟邏輯這類需要刻意逐步思考的題目。
+            kwargs["reasoning_effort"] = "none"
+        return ChatOpenAI(**kwargs)
 
     if settings.agent_model_provider == "anthropic":
         from langchain_anthropic import ChatAnthropic

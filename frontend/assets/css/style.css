@@ -1073,6 +1073,14 @@ textarea {
   border-color: transparent;
 }
 
+/* 實驗性 deep agent 模式(見 /da-subagent 等指令,ChatView.js 的 modeBadge)-
+   跟 .agent 用不同顏色,一眼能分清楚現在是「原本的」還是「實驗中的」。 */
+.mode-badge.experimental {
+  color: #b45309;
+  background: rgba(217, 119, 6, 0.12);
+  border-color: transparent;
+}
+
 .mode-badge-icon {
   display: flex;
 }
@@ -2141,6 +2149,10 @@ textarea {
   padding: 6px;
   cursor: pointer;
   font-size: 13px;
+  /* Grid item 預設 min-width:auto,長標題(white-space:nowrap)不會被截斷,
+     反而把整個 .calendar-grid 的欄寬撐開跑版 - 允許縮到比內容窄,底下
+     chip 的 overflow:hidden + text-overflow:ellipsis 才會真的生效。 */
+  min-width: 0;
 }
 
 .cal-cell.today {
@@ -2180,6 +2192,7 @@ textarea {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0; /* 同 .cal-event-chip - flex item 也要能縮,ellipsis 才生效 */
 }
 
 .cal-note-more {
@@ -2241,6 +2254,7 @@ textarea {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0; /* flex item 預設不會縮到比內容窄,不加這個 ellipsis 不會生效 */
 }
 
 .cal-event-chip.reminder {

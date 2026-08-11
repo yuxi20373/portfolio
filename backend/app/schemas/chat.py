@@ -20,6 +20,7 @@ class SessionOut(BaseModel):
     created_at: datetime
     last_message_at: datetime
     agent_mode: bool
+    experimental_agent: Optional[str] = None
     is_favorited: bool
     model: str  # effective model for this session - override if set, else the deployment default
 

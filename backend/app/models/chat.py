@@ -31,6 +31,19 @@ class ChatSession(Base):
       full conversation history/memory summary and can use tools. See
       app/services/chat/chat_service.py:process_chat_message.
 
+    experimental_agent: None (default) unless the user sends a command like
+      "/da-subagent" - names which experimental deep-agent implementation
+      (see app/agent/EXPERIMENTAL_AGENTS in chat_service.py) this session's
+      turns get routed through instead of the agent_mode/simple_chat split
+      above. Kept as a separate string field (not a new agent_mode value)
+      so trying an experimental implementation never touches the original
+      agent_mode code path - "/normal" clears this back to None too.
+
+    da_subagent_files: JSON-encoded virtual filesystem carried across turns
+      for the "da_subagent" experimental implementation specifically (its
+      worker subagent writes long output to /results/ - see
+      app/agent/da_subagent/). Unused by every other mode.
+
     model_name: which OpenAI model (see app/agent/model_catalog.py) this
       session's turns are sent to. None = fall back to the deployment
       default (settings.openai_model) - see the `model` property below,
@@ -53,6 +66,8 @@ class ChatSession(Base):
     is_open = Column(Boolean, default=True)
     is_favorited = Column(Boolean, default=False, index=True)
     agent_mode = Column(Boolean, default=False)
+    experimental_agent = Column(String(30), nullable=True)
+    da_subagent_files = Column(Text, nullable=True)
     model_name = Column(String(50), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
 

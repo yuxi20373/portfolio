@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session as DBSession
@@ -7,6 +8,7 @@ from ...config import settings
 from ...agent import memory_manager
 from ...agent import runner as agent_runner
 from ...agent import simple_chat
+from ...agent.da_subagent import runner as da_subagent_runner
 from ...integrations import langfuse_client
 from ...request_context import current_user_id
 from .title_service import generate_title
@@ -16,6 +18,19 @@ from .title_service import generate_title
 # 一般模式（單輪快速回覆、無工具，但仍保留同 session 的短期記憶）。
 AGENT_MODE_COMMAND = "/agent"
 NORMAL_MODE_COMMAND = "/normal"
+
+# 實驗性的 deep agent 實作 - 跟上面的 agent_mode 是分開獨立的一條路,不影響
+# /agent 原本的行為。之後要多試別種實作,就在這個字典多加一個 key + 一個
+# run_turn(context_messages, user_text, files, model_name) -> (reply, usage,
+# files) 的函式,不用改這裡以外的東西。目前只有一種:da_subagent(1DA +
+# worker 委派架構,從獨立專案 deepagent_service/ 移植進來的,見
+# app/agent/da_subagent/)。
+EXPERIMENTAL_AGENT_COMMANDS = {
+    "/da-subagent": "da_subagent",
+}
+EXPERIMENTAL_AGENTS = {
+    "da_subagent": da_subagent_runner.run_turn,
+}
 
 
 def get_or_create_session(
@@ -74,6 +89,19 @@ def get_or_create_session(
 
 def _switch_mode(db: DBSession, session: models.ChatSession, user_text: str, agent_mode: bool, reply_text: str) -> str:
     session.agent_mode = agent_mode
+    session.experimental_agent = None  # 跟實驗性模式互斥,切回 /agent 或 /normal 一律離開實驗模式
+    db.add(models.ChatMessage(session_id=session.id, role="user", content=user_text))
+    db.add(models.ChatMessage(session_id=session.id, role="assistant", content=reply_text))
+    session.last_message_at = datetime.utcnow()
+    db.commit()
+    return reply_text
+
+
+def _switch_experimental_agent(
+    db: DBSession, session: models.ChatSession, user_text: str, agent_key: str, reply_text: str
+) -> str:
+    session.experimental_agent = agent_key
+    session.agent_mode = False  # 跟 /agent 互斥,一次只有一種深度 agent 在跑
     db.add(models.ChatMessage(session_id=session.id, role="user", content=user_text))
     db.add(models.ChatMessage(session_id=session.id, role="assistant", content=reply_text))
     session.last_message_at = datetime.utcnow()
@@ -116,6 +144,15 @@ def process_chat_message(db: DBSession, session: models.ChatSession, user_text: 
             False,
             "已切換回一般模式，之後的對話是不使用工具的單輪快速回覆（仍保留這個對話的短期記憶）。打 /agent 可以再切回 Deep Agent 模式。",
         )
+    if command in EXPERIMENTAL_AGENT_COMMANDS:
+        agent_key = EXPERIMENTAL_AGENT_COMMANDS[command]
+        return _switch_experimental_agent(
+            db,
+            session,
+            user_text,
+            agent_key,
+            f"已切換為實驗性的 {agent_key} 模式（1DA + worker 委派架構，會用工具、可以把長篇結果寫成檔案供之後查閱）。打 /normal 可以切回一般模式。",
+        )
 
     # Build context from EXISTING history first, so the new user message
     # below isn't double-counted when the model is called.
@@ -124,9 +161,16 @@ def process_chat_message(db: DBSession, session: models.ChatSession, user_text: 
     db.commit()
 
     # session.model_name is None unless the user picked a specific model in
-    # the UI - both paths below fall back to the deployment default in that case.
+    # the UI - every path below falls back to the deployment default in that case.
     run_id = None
-    if session.agent_mode:
+    if session.experimental_agent in EXPERIMENTAL_AGENTS:
+        run_experimental_turn = EXPERIMENTAL_AGENTS[session.experimental_agent]
+        files = json.loads(session.da_subagent_files) if session.da_subagent_files else {}
+        reply_text, usage, files = run_experimental_turn(
+            context_messages, user_text, files=files, model_name=session.model_name
+        )
+        session.da_subagent_files = json.dumps(files)
+    elif session.agent_mode:
         handler, run_id = langfuse_client.new_handler_and_run_id()
         reply_text, usage = agent_runner.run_turn(
             context_messages,
