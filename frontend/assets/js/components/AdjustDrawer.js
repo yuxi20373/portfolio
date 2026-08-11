@@ -31,7 +31,6 @@ export default {
     async function submitInstruction() {
       const text = instruction.value.trim();
       if (!text) return;
-      instruction.value = "";
       loading.value = true;
       try {
         const base = proposal.value; // keep refining the latest proposal if there is one
@@ -40,6 +39,12 @@ export default {
           base_content: base ? base.content : null,
           base_summary: base ? base.summary : null,
         });
+        // 只有成功才清空 - 這支 API 會做即時網路搜尋+LLM 生成,偶爾會逾時/失敗,
+        // 之前是不管成功失敗都先清空,失敗時使用者打的字就整個不見、畫面又
+        // 退回空白提示,看起來像抽屜整個被收起來重置了,其實只是沒顯示錯誤。
+        instruction.value = "";
+      } catch (e) {
+        store.showNotice(e.message || "Adjust failed, please try again", "error");
       } finally {
         loading.value = false;
       }

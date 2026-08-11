@@ -2621,6 +2621,12 @@ textarea {
   border-color: var(--accent);
 }
 
+/* Wiki 頁面的 Quick memo 輸入框(見 WikiView.js)- 只要 3 行高,不要繼承
+   .note-editor-textarea 預設的 height:70vh(那是給整篇筆記編輯用的)。 */
+.wiki-memo-textarea {
+  height: 72px;
+}
+
 /* 只有筆記本身的內容欄位要放大字體(不是 Manage 畫面的 template 內容,
    也不是其他輸入框),而且只在電腦版 - 見 NotesView.js 的新增/編輯筆記
    textarea。13px * 1.3 ≈ 17px。 */

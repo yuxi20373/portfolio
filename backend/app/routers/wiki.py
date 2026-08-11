@@ -10,6 +10,7 @@ from ..auth import get_current_user
 from ..database import get_db
 from ..services.wiki.wiki_search_service import create_or_update_via_search
 from ..services.wiki.wiki_adjust_service import propose_adjustment, apply_adjustment
+from ..services.wiki.wiki_memo_service import absorb_memo_into_wiki
 from ..schemas.wiki import WikiEntryUpdate, WikiFolderCreate, WikiFolderUpdate
 
 router = APIRouter(prefix="/api", tags=["wiki"])
@@ -18,6 +19,10 @@ router = APIRouter(prefix="/api", tags=["wiki"])
 class WikiSearchRequest(BaseModel):
     keyword: str
     question: str
+
+
+class WikiMemoRequest(BaseModel):
+    text: str
 
 
 class WikiAdjustPreviewRequest(BaseModel):
@@ -161,6 +166,21 @@ def search_into_wiki(
 ):
     try:
         entry = create_or_update_via_search(db, user.id, payload.keyword, payload.question)
+    except ValueError as ex:
+        raise HTTPException(400, str(ex))
+    return _wiki_entry_detail(db, entry, user)
+
+
+@router.post("/wiki/memo")
+def add_memo_to_wiki(
+    payload: WikiMemoRequest, db: DBSession = Depends(get_db), user: models.User = Depends(get_current_user)
+):
+    """Wiki 頁面自己的「Quick memo」輸入框用的(見 WikiView.js)- 跟首頁側欄
+    的 memo checklist(routers/memos.py)完全是兩回事,不共用資料,這裡只是
+    借用「memo」這個字表示「隨手記一段文字」,純粹是把文字直接餵給 LLM 整理
+    彙整進 wiki(新增或更新既有條目),不會存成一筆待辦事項。"""
+    try:
+        entry = absorb_memo_into_wiki(db, user.id, payload.text)
     except ValueError as ex:
         raise HTTPException(400, str(ex))
     return _wiki_entry_detail(db, entry, user)

@@ -45,7 +45,13 @@ def propose_adjustment(
 
     # 用條目標題+使用者指令當搜尋詞,補充最新/更詳細的資訊給模型參考 - 模型
     # 不是照單全收,只在跟指令相關時才會拿來用(見 ADJUST_SYSTEM_PROMPT)。
-    search_results = web_search_tool.invoke({"query": f"{entry.title} {instruction}"})
+    # 沒設 TAVILY_API_KEY 時走的是免 key 的 DuckDuckGo 備援,偶爾會逾時/被
+    # 限流拋例外 - 不能讓搜尋失敗整個搞垮 adjust(之前就是這樣:整支 500,
+    # 前端沒有錯誤處理,使用者打的字就跟著憑空消失,看起來像抽屜被收起來)。
+    try:
+        search_results = web_search_tool.invoke({"query": f"{entry.title} {instruction}"})
+    except Exception:
+        search_results = "(web search unavailable right now - proceeding without it)"
 
     user_prompt = (
         f"Entry title: {entry.title}\n"

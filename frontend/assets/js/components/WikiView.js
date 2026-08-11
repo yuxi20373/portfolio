@@ -18,6 +18,30 @@ export default {
     // --- Adjust drawer (right-side, propose-then-confirm) ---
     const showAdjustDrawer = ref(false);
 
+    // --- Quick memo -> Wiki(見 store.js 的 addMemoToWiki)- 隨手記一段文字,
+    // 直接餵給 LLM 整理彙整進 wiki(新增或更新既有條目,盡量只增不減)。跟
+    // 首頁側欄的 memo checklist 是完全獨立的兩件事,不共用資料、不會存成一筆
+    // 待辦事項 - 只是借用「memo」這個詞表示「隨手記一段文字」。 ---
+    const showMemoBox = ref(false);
+    const memoText = ref("");
+    const savingMemo = ref(false);
+
+    async function submitMemo() {
+      const text = memoText.value.trim();
+      if (!text) return;
+      savingMemo.value = true;
+      try {
+        const entry = await store.addMemoToWiki(text);
+        memoText.value = ""; // 只有成功才清空,失敗的話使用者不用重打
+        showMemoBox.value = false;
+        store.showNotice(`Added to wiki: ${entry.title}`);
+      } catch (e) {
+        store.showNotice(e.message || "Couldn't add to wiki", "error");
+      } finally {
+        savingMemo.value = false;
+      }
+    }
+
     // --- Manual edit (no LLM at all) ---
     const editing = ref(false);
     const editTitle = ref("");
@@ -126,6 +150,10 @@ export default {
       onSearchFieldKeydown,
       runSearch,
       showAdjustDrawer,
+      showMemoBox,
+      memoText,
+      savingMemo,
+      submitMemo,
       editing,
       editTitle,
       editTags,
@@ -145,6 +173,7 @@ export default {
         <img v-if="searchToggleImgOk" :src="store.img('search.png')" alt="Search" @error="searchToggleImgOk = false" />
         <span v-else class="search-submit-fallback"><span v-html="icons.search"></span> Search</span>
       </button>
+      <button class="icon-btn" title="Quick memo (auto-added to your wiki)" @click="showMemoBox = !showMemoBox" v-html="icons.idea"></button>
       <template v-if="store.currentWikiEntry && !editing">
         <button class="icon-btn" title="Edit" @click="startEdit" v-html="icons.edit"></button>
         <button class="icon-btn" title="Adjust" @click="showAdjustDrawer = true" v-html="icons.sliders"></button>
@@ -178,6 +207,21 @@ export default {
                @keydown="onSearchFieldKeydown" />
         <button class="btn" :disabled="searching || !searchKeyword.trim() || !searchQuestion.trim()" @click="runSearch">
           <span v-if="searching" class="spinner"></span>{{ searching ? ' Searching…' : 'Search & add to wiki' }}
+        </button>
+      </div>
+    </div>
+
+    <div v-if="showMemoBox" class="search-panel">
+      <div class="search-panel-fields">
+        <label class="search-panel-label">Quick memo
+          <span class="search-panel-help">
+            <span class="search-panel-help-icon" v-html="icons.help"></span>
+            <span class="search-panel-help-tip">jot down anything - it's saved to your memo list AND automatically written up into the right wiki entry (new or existing, existing content is kept, not overwritten)</span>
+          </span>
+        </label>
+        <textarea v-model="memoText" class="note-editor-textarea wiki-memo-textarea" rows="3" placeholder="e.g. 剛剛跟客戶開會提到...&#10;或任何想到的筆記"></textarea>
+        <button class="btn" :disabled="savingMemo || !memoText.trim()" @click="submitMemo">
+          <span v-if="savingMemo" class="spinner"></span>{{ savingMemo ? ' Adding…' : 'Save & add to wiki' }}
         </button>
       </div>
     </div>

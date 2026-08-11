@@ -355,6 +355,18 @@ export const store = reactive({
     this.currentWikiEntry = entry;
   },
 
+  // Wiki 頁面自己的「Quick memo」(見 WikiView.js)- 純粹把一段文字直接餵給
+  // LLM 整理彙整進 wiki(新增或更新既有條目,盡量只增不減),跟首頁側欄的
+  // memo checklist(memoItems/createMemoItem)完全無關、不共用資料 - 只是
+  // 借用「memo」這個詞表示「隨手記一段文字」而已。
+  async addMemoToWiki(text) {
+    const entry = await api.post("/api/wiki/memo", { text });
+    await this.loadWikiEntries();
+    this.currentWikiId = entry.id;
+    this.currentWikiEntry = entry;
+    return entry;
+  },
+
   // Applies an already-approved draft from the Adjust drawer (preview call
   // itself goes straight through api.js since it's transient, per-drawer state)
   async applyWikiAdjustment(id, summary, content) {
