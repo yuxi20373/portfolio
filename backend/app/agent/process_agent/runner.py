@@ -12,6 +12,7 @@ independently of anything this app stores in its own database.
 """
 
 from .agent_factory import get_agent
+from .tools import _ToolCallLogger
 from ..runner import _aggregate_usage, _last_text
 
 
@@ -21,7 +22,15 @@ def run_turn(
     agent = get_agent(model_name)
     input_messages = context_messages + [{"role": "user", "content": user_text}]
 
-    result = agent.invoke({"messages": input_messages, "files": files or {}})
+    # "main" here means the top-level agent itself (as opposed to a spawned
+    # process agent, which gets its own thread_id label - see tools.py's
+    # create_process_agent) - lets you tell from the printed log alone
+    # whether the main agent answered directly or a specific delegated
+    # instance did the work.
+    result = agent.invoke(
+        {"messages": input_messages, "files": files or {}},
+        config={"callbacks": [_ToolCallLogger("main")]},
+    )
     all_messages = result.get("messages", [])
 
     reply = _last_text(all_messages)

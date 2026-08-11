@@ -31,6 +31,7 @@ import uuid
 from pathlib import Path
 
 from langchain.tools import ToolRuntime, tool
+from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
@@ -40,6 +41,28 @@ from ..agent_factory import build_chat_model
 from ..tools.web_search import web_search
 
 SKILLS_DIR = Path(__file__).resolve().parent / "skills"
+
+
+class _ToolCallLogger(BaseCallbackHandler):
+    """Prints every tool call/result made during one invoke() call, tagged
+    with `label` - lets you see concretely WHICH agent instance actually
+    did the work (the main agent, or a specific spawned process agent by
+    its thread_id), instead of trusting a reply's self-description. Each
+    process agent gets its own fresh thread_id and its own invoke() call,
+    so a plain per-call label is enough here - no need for orchestrator's
+    depth-tracking (that's only needed because it shares ONE invoke() call
+    with its worker via the `task` tool)."""
+
+    def __init__(self, label: str):
+        self.label = label
+
+    def on_tool_start(self, serialized, input_str, **kwargs):
+        name = serialized.get("name", "?")
+        print(f"[process_agent:{self.label}] {name}({input_str})")
+
+    def on_tool_end(self, output, **kwargs):
+        preview = str(output)[:500]
+        print(f"[process_agent:{self.label}]   -> {preview!r}")
 
 # Shared across every process agent run, but each run gets its own
 # thread_id, so runs don't see each other's state - this is what makes
@@ -97,7 +120,7 @@ def create_process_agent(task_description: str, runtime: ToolRuntime) -> Command
 
     result = process_agent.invoke(
         {"messages": [HumanMessage(task_description)], "files": parent_files},
-        config={"configurable": {"thread_id": thread_id}},
+        config={"configurable": {"thread_id": thread_id}, "callbacks": [_ToolCallLogger(thread_id)]},
     )
 
     reply = _last_text(result.get("messages", []))
@@ -121,6 +144,7 @@ def get_process_agent_thread(thread_id: str) -> str:
     debug what a worker actually did, beyond its final summary)."""
     process_agent = _get_process_agent()
     state = process_agent.get_state({"configurable": {"thread_id": thread_id}})
+    print(f"[process_agent:main] get_process_agent_thread({thread_id!r})")
     if not state.values:
         return f"No process agent thread found for {thread_id!r}"
     lines = []
