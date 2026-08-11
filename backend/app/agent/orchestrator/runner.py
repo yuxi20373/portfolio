@@ -1,10 +1,10 @@
-"""Runs one turn of the "da_subagent" experimental deep agent. Unlike
+"""Runs one turn of the "orchestrator" experimental deep agent. Unlike
 ../runner.py (the "original" /agent path), this variant also carries a
 virtual filesystem (`files`) across turns, since its worker subagent writes
 long output to /results/ for the main agent to read back later in the same
 session (see agent_factory.py's AGENT_INSTRUCTIONS). The caller
 (chat_service.py) owns persisting `files` between turns - see
-ChatSession.da_subagent_files.
+ChatSession.orchestrator_files.
 """
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -19,11 +19,12 @@ class _ToolCallCollector(BaseCallbackHandler):
     being true, so this prints every REAL tool invocation (including ones
     made *inside* an isolated worker run, since LangGraph propagates
     callbacks into nested subagent invocations automatically) straight to
-    the server console, instead of trusting the reply text. Tagged 1DA vs
-    worker via whether we're currently between a `task` tool's start and its
-    matching end (by run_id) - a flat list alone can't tell "1DA called
-    write_file itself" apart from "write_file was called inside the
-    delegated worker", since both share the same default tools.
+    the server console, instead of trusting the reply text. Tagged
+    orchestrator vs worker via whether we're currently between a `task`
+    tool's start and its matching end (by run_id) - a flat list alone can't
+    tell "orchestrator called write_file itself" apart from "write_file was
+    called inside the delegated worker", since both share the same default
+    tools.
 
     Printed (not `logging`) so it's guaranteed visible in the running
     server's stdout without needing any logging config this app doesn't have."""
@@ -36,18 +37,18 @@ class _ToolCallCollector(BaseCallbackHandler):
     def on_tool_start(self, serialized, input_str, *, run_id=None, **kwargs):
         name = serialized.get("name", "?")
         self._names_by_run_id[run_id] = name
-        agent = "worker" if self._depth > 0 else "1DA"
+        agent = "worker" if self._depth > 0 else "orchestrator"
         self.calls.append({"agent": agent, "event": "call", "tool": name, "input": input_str})
-        print(f"[da_subagent tool:{agent}] {name}({input_str})")
+        print(f"[orchestrator tool:{agent}] {name}({input_str})")
         if name == "task":
             self._depth += 1
 
     def on_tool_end(self, output, *, run_id=None, **kwargs):
         was_task = self._names_by_run_id.pop(run_id, None) == "task"
-        agent = "1DA" if was_task else ("worker" if self._depth > 0 else "1DA")
+        agent = "orchestrator" if was_task else ("worker" if self._depth > 0 else "orchestrator")
         preview = str(output)[:500]
         self.calls.append({"agent": agent, "event": "result", "output": preview})
-        print(f"[da_subagent tool:{agent}]   -> {preview!r}")
+        print(f"[orchestrator tool:{agent}]   -> {preview!r}")
         if was_task:
             self._depth = max(0, self._depth - 1)
 
@@ -73,9 +74,9 @@ def run_turn(
     # 的紀錄,但委派本身確實發生了,不能拿「worker 有沒有再用到工具」來判斷
     # 「有沒有委派」,這是兩件事。
     if any(c["event"] == "call" and c["tool"] == "task" for c in collector.calls):
-        print("[da_subagent] delegated to worker via task this turn")
+        print("[orchestrator] delegated to worker via task this turn")
     elif collector.calls:
-        print("[da_subagent] tools were called, but never delegated to worker via task")
+        print("[orchestrator] tools were called, but never delegated to worker via task")
     else:
-        print("[da_subagent] no tool calls this turn (answered directly)")
+        print("[orchestrator] no tool calls this turn (answered directly)")
     return reply, usage, result.get("files", {})

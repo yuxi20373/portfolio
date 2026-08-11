@@ -8,7 +8,8 @@ from ...config import settings
 from ...agent import memory_manager
 from ...agent import runner as agent_runner
 from ...agent import simple_chat
-from ...agent.da_subagent import runner as da_subagent_runner
+from ...agent.orchestrator import runner as orchestrator_runner
+from ...agent.process_agent import runner as process_agent_runner
 from ...integrations import langfuse_client
 from ...request_context import current_user_id
 from .title_service import generate_title
@@ -20,16 +21,34 @@ AGENT_MODE_COMMAND = "/agent"
 NORMAL_MODE_COMMAND = "/normal"
 
 # 實驗性的 deep agent 實作 - 跟上面的 agent_mode 是分開獨立的一條路,不影響
-# /agent 原本的行為。之後要多試別種實作,就在這個字典多加一個 key + 一個
+# /agent 原本的行為。之後要多試別種實作,就在這三個字典各多加一個 key(+ 一個
 # run_turn(context_messages, user_text, files, model_name) -> (reply, usage,
-# files) 的函式,不用改這裡以外的東西。目前只有一種:da_subagent(1DA +
-# worker 委派架構,從獨立專案 deepagent_service/ 移植進來的,見
-# app/agent/da_subagent/)。
+# files) 的函式),不用改這裡以外的東西。如果新實作也需要跨輪保留自己的
+# files 狀態,ChatSession 要多加一欄,並在 FILES_COLUMN_BY_AGENT 註冊對應的
+# 欄位名稱(不需要就不用加,留 None)。
+#
+# 目前有兩種,都是從獨立專案 deepagent_service/ 移植進來的:
+# - orchestrator:主 agent 委派給預先註冊好的靜態 worker subagent(用
+#   deepagents 內建的 task 工具),見 app/agent/orchestrator/。
+# - process_agent:主 agent 有個 create_process_agent 工具,可以動態建立
+#   獨立的 agent 實例(用 LangGraph checkpointer + 各自的 thread_id 隔離,
+#   執行紀錄可以事後用 get_process_agent_thread 查回來),見
+#   app/agent/process_agent/。
 EXPERIMENTAL_AGENT_COMMANDS = {
-    "/da-subagent": "da_subagent",
+    "/test-subagent": "orchestrator",
+    "/test-pa": "process_agent",
 }
 EXPERIMENTAL_AGENTS = {
-    "da_subagent": da_subagent_runner.run_turn,
+    "orchestrator": orchestrator_runner.run_turn,
+    "process_agent": process_agent_runner.run_turn,
+}
+EXPERIMENTAL_AGENT_DESCRIPTIONS = {
+    "orchestrator": "主 agent 委派給預先註冊的靜態 worker subagent（deepagents 的 task 工具）",
+    "process_agent": "主 agent 可動態建立獨立 agent 實例（checkpointer + thread 隔離，可事後查詢）",
+}
+FILES_COLUMN_BY_AGENT = {
+    "orchestrator": "orchestrator_files",
+    "process_agent": "process_agent_files",
 }
 
 
@@ -146,12 +165,13 @@ def process_chat_message(db: DBSession, session: models.ChatSession, user_text: 
         )
     if command in EXPERIMENTAL_AGENT_COMMANDS:
         agent_key = EXPERIMENTAL_AGENT_COMMANDS[command]
+        description = EXPERIMENTAL_AGENT_DESCRIPTIONS.get(agent_key, "")
         return _switch_experimental_agent(
             db,
             session,
             user_text,
             agent_key,
-            f"已切換為實驗性的 {agent_key} 模式（1DA + worker 委派架構，會用工具、可以把長篇結果寫成檔案供之後查閱）。打 /normal 可以切回一般模式。",
+            f"已切換為實驗性的 {agent_key} 模式（{description}）。打 /normal 可以切回一般模式。",
         )
 
     # Build context from EXISTING history first, so the new user message
@@ -165,11 +185,14 @@ def process_chat_message(db: DBSession, session: models.ChatSession, user_text: 
     run_id = None
     if session.experimental_agent in EXPERIMENTAL_AGENTS:
         run_experimental_turn = EXPERIMENTAL_AGENTS[session.experimental_agent]
-        files = json.loads(session.da_subagent_files) if session.da_subagent_files else {}
+        files_column = FILES_COLUMN_BY_AGENT.get(session.experimental_agent)
+        stored_files = getattr(session, files_column, None) if files_column else None
+        files = json.loads(stored_files) if stored_files else {}
         reply_text, usage, files = run_experimental_turn(
             context_messages, user_text, files=files, model_name=session.model_name
         )
-        session.da_subagent_files = json.dumps(files)
+        if files_column:
+            setattr(session, files_column, json.dumps(files))
     elif session.agent_mode:
         handler, run_id = langfuse_client.new_handler_and_run_id()
         reply_text, usage = agent_runner.run_turn(

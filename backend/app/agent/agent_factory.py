@@ -49,11 +49,17 @@ def build_chat_model(model_name: str = None):
         if resolved_model.startswith("gpt-5"):
             # gpt-5.x 是推理模型 - 搭配 function tools 用時,OpenAI 的
             # /v1/chat/completions 端點會直接 400("Function tools with
-            # reasoning_effort are not supported")。明確關掉推理
-            # (reasoning_effort="none")就能正常用工具,不用整個換成非推理
-            # 模型 - 對日常對話/工具呼叫這種場景,不推理的影響通常很小,
-            # 差別主要在複雜數學/多步驟邏輯這類需要刻意逐步思考的題目。
-            kwargs["reasoning_effort"] = "none"
+            # reasoning_effort are not supported")。明確關掉/調低推理就能
+            # 正常用工具,不用整個換成非推理模型 - 對日常對話/工具呼叫這種
+            # 場景,推理調低的影響通常很小,差別主要在複雜數學/多步驟邏輯
+            # 這類需要刻意逐步思考的題目。
+            #
+            # 不同 gpt-5 世代支援的有效值不一樣,不是每個都吃 "none":
+            # gpt-5.6-luna 實測必須是 "none"(其他值一樣會撞 tools+reasoning
+            # 的 400);gpt-5-mini 實測 "none" 直接被拒(錯誤訊息列出的合法值
+            # 是 minimal/low/medium/high),用 "minimal" 通過。之後如果再遇到
+            # 新的 gpt-5.x 世代炸掉,先看錯誤訊息列出的合法值,不要照抄這裡。
+            kwargs["reasoning_effort"] = "none" if resolved_model.startswith("gpt-5.6") else "minimal"
         return ChatOpenAI(**kwargs)
 
     if settings.agent_model_provider == "anthropic":

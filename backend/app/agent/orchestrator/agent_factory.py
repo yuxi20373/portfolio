@@ -1,10 +1,10 @@
-"""Builds and caches the "da_subagent" experimental deep agent: a two-layer
-setup (a main agent, "1DA", that can delegate complex sub-tasks to an
-isolated "worker" subagent, "2DA", via deepagents' built-in `task` tool).
+"""Builds and caches the "orchestrator" experimental deep agent: a two-layer
+setup (a main "orchestrator" agent that can delegate complex sub-tasks to
+an isolated "worker" subagent via deepagents' built-in `task` tool).
 
 Ported in-process from the standalone deepagent_service/ prototype at the
 repo root (which was never deployed) so it can be tried from the chat page
-via the "/da-subagent" command without standing up a separate service - see
+via the "/orchestrator" command without standing up a separate service - see
 runner.py and app/services/chat/chat_service.py's dispatch.
 
 Deliberately kept fully separate from ../agent_factory.py (the "original"
@@ -49,8 +49,8 @@ SKILLS_DIR = Path(__file__).resolve().parent / "skills"
 # module's own skills dir) is specific to the worker subagent below.
 SHARED_SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
 
-# The "2DA": an isolated worker the main agent ("1DA") can delegate to via
-# the built-in `task` tool. Its internal messages never enter the main
+# The isolated worker the "orchestrator" agent can delegate to via the
+# built-in `task` tool. Its internal messages never enter the main
 # conversation - only its final reply comes back - and any file it writes
 # lands in the same shared virtual filesystem the main agent reads from.
 # tools/model are omitted so it inherits the main agent's tools and model.
@@ -74,7 +74,7 @@ _agents = {}
 
 
 def get_agent(model_name: str = None):
-    """Lazily build and cache one da_subagent instance per model name - same
+    """Lazily build and cache one orchestrator instance per model name - same
     per-model caching pattern as ../agent_factory.get_agent, but a fully
     separate cache/instance."""
     key = model_name or "__default__"
