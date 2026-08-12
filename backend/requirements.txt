@@ -34,6 +34,15 @@ langchain-groq
 langchain-openai
 langchain-anthropic
 
+# --- Postgres-backed LangGraph store (app/agent/process_agent/tools.py's
+# shared virtual filesystem - persists across restarts, unlike the
+# in-memory checkpointer) - needs the psycopg v3 driver with its binary
+# build (bundles its own libpq; the pure-Python fallback against an old
+# system libpq crashes outright on connect - see that module's comments).
+# Separate from psycopg2-binary above, which is what SQLAlchemy itself uses.
+langgraph-checkpoint-postgres
+psycopg[binary]
+
 # --- agent tools ---
 ddgs           # key-less web search fallback (DuckDuckGo)
 tavily-python  # optional, better web search if TAVILY_API_KEY is set
