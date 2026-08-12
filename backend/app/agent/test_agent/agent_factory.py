@@ -15,7 +15,7 @@ from deepagents import create_deep_agent
 
 from ..agent_factory import build_chat_model
 from ..tools.web_search import web_search
-from .tools import TestAgentContext, create_process_agent, get_process_agent_thread, shared_backend
+from .tools import TestAgentContext, create_process_agent, get_process_agent_thread, get_shared_backend
 from .tools import _shared_store  # same Postgres store process_agent uses, different namespace prefix
 
 AGENT_INSTRUCTIONS_TEMPLATE = (
@@ -34,7 +34,13 @@ AGENT_INSTRUCTIONS_TEMPLATE = (
     "actually delegate one call per identity involved, then combine the "
     "results in your reply. Each create_process_agent call reports back a "
     "thread_id - use get_process_agent_thread(thread_id) if you need the "
-    "full detail behind a delegated task's summary later."
+    "full detail behind a delegated task's summary later.\n\n"
+    "Final reply format: output ONLY each identity's result, verbatim, one "
+    "per line (a short `identity: result` label is fine). Do NOT narrate "
+    "what you did (no 'I delegated to...', no 'here are the combined "
+    "results', no explanation of your process), do NOT add any preamble, "
+    "summary, or commentary beyond what each worker actually returned. Keep "
+    "the whole reply as short as the results themselves."
 )
 
 _agents = {}
@@ -58,7 +64,7 @@ def get_agent(identities: tuple, model_name: str = None):
             system_prompt=AGENT_INSTRUCTIONS_TEMPLATE.format(identities_desc=identities_desc),
             model=build_chat_model(model_name),
             skills=skills or None,
-            backend=shared_backend,
+            backend=get_shared_backend(),
             store=_shared_store,
             context_schema=TestAgentContext,
         )

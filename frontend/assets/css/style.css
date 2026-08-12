@@ -1069,6 +1069,62 @@ textarea {
   margin-bottom: 0;
 }
 
+/* Skill Manage 頁面(見 SkillManageView.js)- 左邊 fab/role 分組列表,右邊
+   選中 skill 的內容編輯器,skill 內容存 Postgres,存檔立刻對 Test Agent 生效。 */
+.skill-manage-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 0;
+}
+
+.skill-manage-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  padding: 16px 20px;
+  gap: 16px;
+}
+
+.skill-manage-list {
+  width: 260px;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.skill-manage-fab-group {
+  margin-bottom: 10px;
+}
+
+.skill-manage-fab-label {
+  font-family: "Overlock SC", sans-serif;
+  font-size: 13px;
+  letter-spacing: .04em;
+  color: var(--text-muted);
+  padding: 6px 10px 2px;
+}
+
+.skill-manage-editor {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.skill-manage-editor-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.skill-manage-new-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .chat-toolbar {
   display: flex;
   align-items: center;

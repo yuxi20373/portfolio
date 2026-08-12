@@ -204,6 +204,13 @@ export const store = reactive({
     return list;
   },
 
+  // Test Agent 頁面的抽屜列表 - 跟一般 chat 用同一個 sessions 陣列(GET
+  // /api/sessions 本來就不分 experimental_agent,全部一起回來),這裡只是
+  // 過濾出 test_agent 那些,不套用 chat 專用的搜尋/日期/收藏篩選。
+  get visibleTestAgentSessions() {
+    return this.sessions.filter((s) => s.experimental_agent === "test_agent");
+  },
+
   // Plain text match (title/tags), not semantic - separate from conversation search
   get visibleWikiEntries() {
     let list = this.wikiEntries;
@@ -295,6 +302,43 @@ export const store = reactive({
     const s = await api.post("/api/sessions/test-agent", { identities });
     await this.loadSessions();
     await this.selectSession(s.id);
+  },
+  // 回到身分選擇畫面,不刪掉目前的 session - 舊 session 還在抽屜列表裡,
+  // 隨時可以點回去繼續(TestAgentView 的「New test session」按鈕、
+  // Sidebar 抽屜的「+」都共用這個)。
+  resetTestAgentSelection() {
+    this.currentSessionId = null;
+    this.messages = [];
+  },
+
+  // --- Skill Manage(見 SkillManageView.js)- test_agent 的 skill 內容全部
+  // 存在 Postgres(不是本地檔案),編輯/新增/刪除立刻對 test_agent 生效,
+  // 不用重新部署 - 見後端 app/agent/test_agent/skill_store.py。---
+  skillFiles: [], // [{fab, role, skill_name, updated_at}, ...]
+
+  async loadSkillFiles() {
+    this.skillFiles = await api.get("/api/test-agent/skills");
+  },
+
+  async loadSkillContent(fab, role, skillName) {
+    const r = await api.get(`/api/test-agent/skills/${fab}/${role}/${skillName}`);
+    return r.content;
+  },
+
+  async saveSkillContent(fab, role, skillName, content) {
+    await api.put(`/api/test-agent/skills/${fab}/${role}/${skillName}`, { content });
+  },
+
+  async createSkillFile(fab, role, skillName, content) {
+    await api.post("/api/test-agent/skills", { fab, role, skill_name: skillName, content });
+    await this.loadSkillFiles();
+    await this.loadTestAgentIdentityOptions(); // 新 fab/function 立刻出現在身分選擇器
+  },
+
+  async deleteSkillFile(fab, role, skillName) {
+    await api.del(`/api/test-agent/skills/${fab}/${role}/${skillName}`);
+    await this.loadSkillFiles();
+    await this.loadTestAgentIdentityOptions();
   },
 
   async sendMessage(text) {

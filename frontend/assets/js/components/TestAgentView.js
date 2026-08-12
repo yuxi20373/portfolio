@@ -61,11 +61,8 @@ export default {
     );
 
     // 回到身分選擇畫面,開一個新的測試組合 - 不刪掉舊 session,舊的還在側欄
-    // 列表裡,可以隨時點回去繼續(跟一般聊天 session 的邏輯一樣)。
-    function newTestSession() {
-      store.currentSessionId = null;
-      store.messages = [];
-    }
+    // 抽屜列表裡,可以隨時點回去繼續(見 Sidebar.js 的 test-agent 分支)。
+    const newTestSession = store.resetTestAgentSelection.bind(store);
 
     const identitiesLabel = computed(() => {
       const s = store.currentSession;

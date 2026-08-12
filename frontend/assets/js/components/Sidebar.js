@@ -258,6 +258,7 @@ export default {
       <button class="icon-btn" :class="{active: store.view==='news'}" @click="setView('news')" title="News" v-html="icons.news"></button>
       <button class="icon-btn" :class="{active: store.view==='hotels'}" @click="setView('hotels')" title="Hotels" v-html="icons.hotel"></button>
       <button class="icon-btn" :class="{active: store.view==='test-agent'}" @click="setView('test-agent')" title="Test Agent" v-html="icons.target"></button>
+      <button class="icon-btn" :class="{active: store.view==='skill-manage'}" @click="setView('skill-manage')" title="Skill Manage" v-html="icons.sliders"></button>
     </div>
 
     <template v-if="store.view === 'chat'">
@@ -304,6 +305,34 @@ export default {
       </div>
 
       <MiniCalendar />
+    </template>
+
+    <template v-else-if="store.view === 'test-agent'">
+      <button class="icon-btn new-item-btn" title="New test session" @click="store.resetTestAgentSelection()" v-html="icons.plus"></button>
+
+      <div class="session-list">
+        <div v-for="s in store.visibleTestAgentSessions" :key="s.id"
+             class="session-item" :class="{active: s.id === store.currentSessionId}">
+          <template v-if="editingId === s.id">
+            <input class="session-rename-input"
+                   :id="'rename-input-' + s.id"
+                   v-model="editingTitle"
+                   @keydown.enter.prevent="confirmRename"
+                   @keydown.esc.prevent="cancelRename"
+                   @blur="confirmRename"
+                   @click.stop />
+          </template>
+          <template v-else>
+            <span class="session-title" @click="store.selectSession(s.id)">{{ s.title }}</span>
+            <span class="session-actions">
+              <button class="mini-icon-btn" :class="{active: s.is_favorited}" title="Favorite" @click.stop="store.toggleSessionFavorite(s.id)" v-html="s.is_favorited ? icons.bookmarkFilled : icons.bookmark"></button>
+              <button class="mini-icon-btn" title="Rename" @click.stop="startRename(s)" v-html="icons.edit"></button>
+              <button class="mini-icon-btn" title="Delete" @click.stop="removeSession(s)" v-html="icons.trash"></button>
+            </span>
+          </template>
+        </div>
+        <div v-if="!store.visibleTestAgentSessions.length" class="hint">No test sessions</div>
+      </div>
     </template>
 
     <template v-else-if="store.view === 'wiki'">

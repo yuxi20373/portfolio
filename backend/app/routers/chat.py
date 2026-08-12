@@ -75,8 +75,9 @@ def create_test_agent_session(
         if identity.fab not in available or identity.function not in available[identity.fab]:
             raise HTTPException(400, f"unknown identity: {identity.fab}/{identity.function}")
 
+    default_title = "、".join(f"{i.fab}/{i.function}" for i in payload.identities)
     s = models.ChatSession(
-        title=payload.title or "Test Agent",
+        title=payload.title or default_title,
         channel="web",
         user_id=user.id,
         experimental_agent="test_agent",

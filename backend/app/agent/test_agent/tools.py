@@ -11,61 +11,70 @@ declares which (fab, function) identities they're testing as (e.g.
   different identities and spawns two separately-scoped p's instead of
   one that just answers from everything it can see
 
-Skill folders live under ../process_agent/skills/{FAB}/{_shared,FUNCTION}/
-(reusing that directory rather than duplicating it - these are the same
-kind of "who can see this" skill files, just organized by organizational
-identity instead of by agent role). Discovered from disk at import time
-(see _discover_identities) rather than hardcoded, so dropping in a new
-FAB/FUNCTION folder is enough to make it available here - no code change.
+Skill content lives in Postgres now, not on disk (see skill_store.py) -
+managed through the "Skill Manage" admin page (routers/test_agent_skills.py)
+so fab/function identities and skill files can be created/edited/deleted
+live, without touching local files or redeploying. Originally this scanned
+../process_agent/skills/{FAB}/{_shared,FUNCTION}/ on disk; those files were
+seeded into the store once (skill_store.seed_from_disk) and are no longer
+read directly - see skill_store.py's module docstring for the namespace
+layout.
 
 Reuses process_agent's Postgres-backed store (see ..process_agent.tools)
-instead of opening a second connection pool - just a different top-level
-namespace ("test_agent" vs "process_agent") so the two don't collide.
+instead of opening a second connection pool - just different top-level
+namespace prefixes ("test_agent" for chat-session scratch files,
+"test_agent_skills" for skill content) so nothing collides.
 
 Backend note: unlike process_agent (which builds one FilesystemBackend per
 role, each rooted exactly at that role's folder - see that module's
 comments on why), this registers routes for EVERY discovered
-fab/function pair up front in one shared CompositeBackend. A worker scoped
-to one identity via skills= is still, strictly, ABLE to read_file() a path
-under a different fab/function if it somehow knew the exact path - the
-skills= list only controls what shows up in its skill INDEX, not a hard
-filesystem permission. That's an acceptable simplification for a
-throwaway testing sandbox; it would matter for a real access-control
-feature.
+fab/function pair up front in one shared CompositeBackend (now backed by
+StoreBackend instead of FilesystemBackend, same one-route-per-role
+shape). A worker scoped to one identity via skills= is still, strictly,
+ABLE to read_file() a path under a different fab/function if it somehow
+knew the exact path - the skills= list only controls what shows up in its
+skill INDEX, not a hard filesystem permission. That's an acceptable
+simplification for a throwaway testing sandbox; it would matter for a real
+access-control feature.
+
+_build_shared_backend()'s routes dict is a snapshot of whatever
+(fab, role) pairs exist in the store at build time - unlike
+_discover_identities() (re-queries the store live on every call, so
+existing identities' skill lists always stay current), adding a genuinely
+NEW fab or function needs a new CompositeBackend route, so
+routers/test_agent_skills.py calls refresh_shared_backend() after any
+create that introduces one. agent_factory.py reads the backend through
+get_shared_backend() (not a plain import) so it always sees the latest
+rebuild - a plain `from .tools import shared_backend` would freeze a
+stale reference at import time.
 """
 
 import uuid
 from dataclasses import dataclass
-from pathlib import Path
 
 from langchain.tools import ToolRuntime, tool
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from deepagents import create_deep_agent
-from deepagents.backends import CompositeBackend, FilesystemBackend, StoreBackend
+from deepagents.backends import CompositeBackend, StoreBackend
 
 from ..agent_factory import build_chat_model
 from ..process_agent.tools import _shared_store
 from ..tools.web_search import web_search
 
-_SKILLS_ROOT = Path(__file__).resolve().parent.parent / "process_agent" / "skills"
-
 
 def _discover_identities() -> dict[str, list[str]]:
-    """Scan disk for {FAB}/{FUNCTION} folders - fab -> sorted list of
-    function names (excluding "_shared", which isn't a function, it's the
-    fab-wide shared bucket). Re-scanned on every call (cheap, a handful of
-    directories) so dropping in a new skill folder is visible without a
-    restart during local dev - see list_available_identities, exposed to
-    the frontend so it doesn't hardcode fab/function names either."""
-    identities: dict[str, list[str]] = {}
-    if not _SKILLS_ROOT.exists():
-        return identities
-    for fab_dir in sorted(p for p in _SKILLS_ROOT.iterdir() if p.is_dir() and p.name != "_shared"):
-        functions = sorted(p.name for p in fab_dir.iterdir() if p.is_dir() and p.name != "_shared")
-        identities[fab_dir.name] = functions
-    return identities
+    """fab -> sorted list of function names (excluding "_shared", which
+    isn't a function, it's the fab-wide shared bucket). Delegates to
+    skill_store (Postgres-backed) - re-queried live on every call, so a
+    brand-new identity created via the Skill Manage page is visible
+    immediately, no restart needed. See list_available_identities,
+    exposed to the frontend so it doesn't hardcode fab/function names
+    either."""
+    from . import skill_store
+
+    return skill_store.list_identities()
 
 
 def list_available_identities() -> list[dict]:
@@ -86,18 +95,41 @@ def _namespace_for(session_id: int) -> tuple:
 _shared_store_backend = StoreBackend(store=_shared_store, namespace=lambda rt: _namespace_for(rt.context.session_id))
 
 
+def _skill_namespace(fab: str, role: str):
+    return ("test_agent_skills", fab, role)
+
+
 def _build_shared_backend() -> CompositeBackend:
     routes = {}
     for fab, functions in _discover_identities().items():
-        fab_dir = _SKILLS_ROOT / fab
         for role in ["_shared", *functions]:
-            role_dir = fab_dir / role
-            if role_dir.exists():
-                routes[f"/{fab}/{role}/"] = FilesystemBackend(root_dir=str(role_dir), virtual_mode=True)
+            routes[f"/{fab}/{role}/"] = StoreBackend(
+                store=_shared_store, namespace=lambda rt, fab=fab, role=role: _skill_namespace(fab, role)
+            )
     return CompositeBackend(default=_shared_store_backend, routes=routes)
 
 
 shared_backend = _build_shared_backend()
+
+
+def refresh_shared_backend() -> None:
+    """Rebuild shared_backend's route table from the store's current set of
+    (fab, role) namespaces - call this after creating a skill under a
+    fab/role combo that didn't exist before (see
+    routers/test_agent_skills.py). Editing or deleting a skill under an
+    EXISTING route needs no rebuild - StoreBackend reads the store live on
+    every call, so content changes show up on the very next turn."""
+    global shared_backend
+    shared_backend = _build_shared_backend()
+
+
+def get_shared_backend() -> CompositeBackend:
+    """Live accessor for shared_backend - agent_factory.py must call this
+    instead of importing the name directly, since a plain
+    `from .tools import shared_backend` copies the reference at import
+    time and would go stale after refresh_shared_backend() reassigns it
+    here."""
+    return shared_backend
 
 # Separate from process_agent's own checkpointer - different sandbox,
 # different thread_id namespace (prefixed "test_agent-" below), no reason

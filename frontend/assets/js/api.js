@@ -44,6 +44,14 @@ export const api = {
     });
     return handleResponse(r);
   },
+  async put(path, body) {
+    const r = await fetch(BASE + path, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(body || {}),
+    });
+    return handleResponse(r);
+  },
   async patch(path, body) {
     const r = await fetch(BASE + path, {
       method: "PATCH",
