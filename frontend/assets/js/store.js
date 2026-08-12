@@ -91,7 +91,7 @@ export const store = reactive({
   // 我最近分享出去(不是分享給我)的對象,最多 2 個,分享面板的快速選項用。
   recentShareTargets: [],
 
-  // view: "home" | "chat" | "wiki" | "calendar" | "news" | "profile"
+  // view: "home" | "chat" | "wiki" | "calendar" | "news" | "profile" | "test-agent"
   view: "home",
 
   // Mobile-only drawer state for the sidebar (see the hamburger button in
@@ -280,6 +280,21 @@ export const store = reactive({
       this.messages = [];
     }
     await this.loadSessions();
+  },
+
+  // --- test_agent 沙盒(見 TestAgentView.js)- fab/function 身分要在建立
+  // session 當下就決定,不是聊天中用指令切換,所以走專門的建立端點,不是
+  // 一般的 newSession()。---
+  testAgentIdentityOptions: [], // [{fab, functions: [...]}, ...] - 從硬碟上實際存在的 skill 資料夾掃出來的
+
+  async loadTestAgentIdentityOptions() {
+    this.testAgentIdentityOptions = await api.get("/api/sessions/test-agent/identities");
+  },
+
+  async createTestAgentSession(identities) {
+    const s = await api.post("/api/sessions/test-agent", { identities });
+    await this.loadSessions();
+    await this.selectSession(s.id);
   },
 
   async sendMessage(text) {

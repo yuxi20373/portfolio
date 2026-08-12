@@ -10,6 +10,7 @@ from ...agent import runner as agent_runner
 from ...agent import simple_chat
 from ...agent.orchestrator import runner as orchestrator_runner
 from ...agent.process_agent import runner as process_agent_runner
+from ...agent.test_agent import runner as test_agent_runner
 from ...integrations import langfuse_client
 from ...request_context import current_user_id
 from .title_service import generate_title
@@ -27,13 +28,17 @@ NORMAL_MODE_COMMAND = "/normal"
 # files 狀態,ChatSession 要多加一欄,並在 FILES_COLUMN_BY_AGENT 註冊對應的
 # 欄位名稱(不需要就不用加,留 None)。
 #
-# 目前有兩種,都是從獨立專案 deepagent_service/ 移植進來的:
+# 目前有三種,前兩種是從獨立專案 deepagent_service/ 移植進來的:
 # - orchestrator:主 agent 委派給預先註冊好的靜態 worker subagent(用
 #   deepagents 內建的 task 工具),見 app/agent/orchestrator/。
 # - process_agent:主 agent 有個 create_process_agent 工具,可以動態建立
 #   獨立的 agent 實例(用 LangGraph checkpointer + 各自的 thread_id 隔離,
 #   執行紀錄可以事後用 get_process_agent_thread 查回來),見
 #   app/agent/process_agent/。
+# - test_agent:fab/function 身分測試沙盒,不透過指令切換(session 建立時就
+#   帶好 identities,見 routers/chat.py 的 create_test_agent_session),見
+#   app/agent/test_agent/。不在 EXPERIMENTAL_AGENT_COMMANDS 裡,但 dispatch
+#   還是走同一套 EXPERIMENTAL_AGENTS 機制。
 EXPERIMENTAL_AGENT_COMMANDS = {
     "/test-subagent": "orchestrator",
     "/test-pa": "process_agent",
@@ -41,18 +46,21 @@ EXPERIMENTAL_AGENT_COMMANDS = {
 EXPERIMENTAL_AGENTS = {
     "orchestrator": orchestrator_runner.run_turn,
     "process_agent": process_agent_runner.run_turn,
+    "test_agent": test_agent_runner.run_turn,
 }
 EXPERIMENTAL_AGENT_DESCRIPTIONS = {
     "orchestrator": "主 agent 委派給預先註冊的靜態 worker subagent（deepagents 的 task 工具）",
     "process_agent": "主 agent 可動態建立獨立 agent 實例（checkpointer + thread 隔離，可事後查詢）",
+    "test_agent": "fab/function 身分測試沙盒",
 }
 FILES_COLUMN_BY_AGENT = {
     "orchestrator": "orchestrator_files",
-    # process_agent no longer persists a files dict here - o and every
-    # spawned process agent share one live store instead (namespaced by
-    # session_id), so there's nothing for us to copy in/out or persist
-    # per turn - see app/agent/process_agent/tools.py's module docstring.
+    # process_agent/test_agent don't persist a files dict here - their
+    # agents share one live store instead (namespaced by session_id), so
+    # there's nothing for us to copy in/out or persist per turn - see
+    # app/agent/process_agent/tools.py's module docstring.
     "process_agent": None,
+    "test_agent": None,
 }
 
 
@@ -192,8 +200,20 @@ def process_chat_message(db: DBSession, session: models.ChatSession, user_text: 
         files_column = FILES_COLUMN_BY_AGENT.get(session.experimental_agent)
         stored_files = getattr(session, files_column, None) if files_column else None
         files = json.loads(stored_files) if stored_files else {}
+        extra_kwargs = {}
+        if session.experimental_agent == "test_agent":
+            # tuple of (fab, function) pairs - matches
+            # test_agent.agent_factory.get_agent's cache key shape.
+            extra_kwargs["identities"] = tuple(
+                (d["fab"], d["function"]) for d in session.test_agent_identities
+            )
         reply_text, usage, files = run_experimental_turn(
-            context_messages, user_text, files=files, model_name=session.model_name, session_id=session.id
+            context_messages,
+            user_text,
+            files=files,
+            model_name=session.model_name,
+            session_id=session.id,
+            **extra_kwargs,
         )
         if files_column:
             setattr(session, files_column, json.dumps(files))

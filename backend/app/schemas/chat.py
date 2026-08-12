@@ -13,6 +13,11 @@ class SessionUpdate(BaseModel):
     model: Optional[str] = None
 
 
+class Identity(BaseModel):
+    fab: str
+    function: str
+
+
 class SessionOut(BaseModel):
     id: int
     title: str
@@ -21,11 +26,22 @@ class SessionOut(BaseModel):
     last_message_at: datetime
     agent_mode: bool
     experimental_agent: Optional[str] = None
+    test_agent_identities: list[Identity] = []
     is_favorited: bool
     model: str  # effective model for this session - override if set, else the deployment default
 
     class Config:
         from_attributes = True
+
+
+class AvailableIdentity(BaseModel):
+    fab: str
+    functions: list[str]
+
+
+class TestAgentSessionCreate(BaseModel):
+    identities: list[Identity]
+    title: Optional[str] = None
 
 
 class ModelInfo(BaseModel):

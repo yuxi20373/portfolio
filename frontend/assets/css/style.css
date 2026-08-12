@@ -1042,6 +1042,33 @@ textarea {
   height: 100%;
 }
 
+/* Test Agent 頁面(見 TestAgentView.js)- 身分選擇器,聊天本身重用
+   .chat-toolbar/.chat-window/.chat-input 那套樣式。 */
+.test-agent-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 0;
+}
+
+.test-agent-picker {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.test-agent-identity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.test-agent-identity-row select {
+  max-width: 200px;
+  margin-bottom: 0;
+}
+
 .chat-toolbar {
   display: flex;
   align-items: center;

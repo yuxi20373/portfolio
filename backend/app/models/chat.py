@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Float
@@ -54,6 +55,15 @@ class ChatSession(Base):
       "process_agent", and app/agent/process_agent/tools.py's module
       docstring for why).
 
+    test_agent_identities_json: JSON-encoded list of [fab, function] pairs
+      for the "test_agent" experimental implementation (see
+      app/agent/test_agent/) - which organizational identities this
+      session is simulating (see the `identities` property below for the
+      parsed form). Set once at session creation (see
+      routers/chat.py's create_test_agent_session), not changed per turn -
+      unlike orchestrator_files, this isn't runtime state the agent
+      writes, it's the test configuration the user chose up front.
+
     model_name: which OpenAI model (see app/agent/model_catalog.py) this
       session's turns are sent to. None = fall back to the deployment
       default (settings.openai_model) - see the `model` property below,
@@ -78,6 +88,7 @@ class ChatSession(Base):
     agent_mode = Column(Boolean, default=False)
     experimental_agent = Column(String(30), nullable=True)
     orchestrator_files = Column(Text, nullable=True)
+    test_agent_identities_json = Column(Text, nullable=True)
     model_name = Column(String(50), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
 
@@ -94,6 +105,15 @@ class ChatSession(Base):
         """The model this session's turns actually get sent to - its own
         override if set, otherwise the deployment default."""
         return self.model_name or settings.openai_model
+
+    @property
+    def test_agent_identities(self) -> list:
+        """Parsed [{"fab": ..., "function": ...}, ...] - see
+        test_agent_identities_json above. Empty list if unset (not a
+        test_agent session)."""
+        if not self.test_agent_identities_json:
+            return []
+        return [{"fab": fab, "function": function} for fab, function in json.loads(self.test_agent_identities_json)]
 
 
 class ChatMessage(Base):
