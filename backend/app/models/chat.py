@@ -45,16 +45,14 @@ class ChatSession(Base):
       (its worker subagent writes long output to /results/ - see
       app/agent/orchestrator/). Unused by every other mode.
 
-    process_agent_files: same idea as orchestrator_files above, but for the
-      "process_agent" experimental implementation (see
-      app/agent/process_agent/) - its own separate column since each
-      experimental implementation's virtual filesystem is independent (see
-      chat_service.py's FILES_COLUMN_BY_AGENT). Note this is only the
-      process_agent-capable main agent's own top-level files - each
-      individual delegated process agent worker's checkpointed thread state
-      lives in that process's memory
-      (app/agent/process_agent/tools.py's _process_agent_checkpointer), not
-      here.
+      The "process_agent" experimental implementation (see
+      app/agent/process_agent/) does NOT have an equivalent column - unlike
+      orchestrator, it and every process agent it spawns share one live
+      LangGraph store instance (namespaced by this session's id), so
+      there's no per-turn files snapshot to persist here at all (see
+      chat_service.py's FILES_COLUMN_BY_AGENT, which is None for
+      "process_agent", and app/agent/process_agent/tools.py's module
+      docstring for why).
 
     model_name: which OpenAI model (see app/agent/model_catalog.py) this
       session's turns are sent to. None = fall back to the deployment
@@ -80,7 +78,6 @@ class ChatSession(Base):
     agent_mode = Column(Boolean, default=False)
     experimental_agent = Column(String(30), nullable=True)
     orchestrator_files = Column(Text, nullable=True)
-    process_agent_files = Column(Text, nullable=True)
     model_name = Column(String(50), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
 

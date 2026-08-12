@@ -54,7 +54,11 @@ class _ToolCallCollector(BaseCallbackHandler):
 
 
 def run_turn(
-    context_messages: list[dict], user_text: str, files: dict = None, model_name: str = None
+    context_messages: list[dict],
+    user_text: str,
+    files: dict = None,
+    model_name: str = None,
+    session_id: int = None,  # unused here - orchestrator still uses the old per-invocation StateBackend/files approach, not session-namespaced sharing
 ) -> tuple[str, dict, dict]:
     agent = get_agent(model_name)
     input_messages = context_messages + [{"role": "user", "content": user_text}]

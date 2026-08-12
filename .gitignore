@@ -1,3 +1,8 @@
 backend/.env
 backend/data.db
 backend/app/__pycache__
+backend/app/agent/__pycache__
+backend/app/models/__pycache__
+backend/app/prompts/__pycache__
+backend/app/routers/__pycache__
+backend/alembic/versions/__pycache__

@@ -48,7 +48,11 @@ EXPERIMENTAL_AGENT_DESCRIPTIONS = {
 }
 FILES_COLUMN_BY_AGENT = {
     "orchestrator": "orchestrator_files",
-    "process_agent": "process_agent_files",
+    # process_agent no longer persists a files dict here - o and every
+    # spawned process agent share one live store instead (namespaced by
+    # session_id), so there's nothing for us to copy in/out or persist
+    # per turn - see app/agent/process_agent/tools.py's module docstring.
+    "process_agent": None,
 }
 
 
@@ -189,7 +193,7 @@ def process_chat_message(db: DBSession, session: models.ChatSession, user_text: 
         stored_files = getattr(session, files_column, None) if files_column else None
         files = json.loads(stored_files) if stored_files else {}
         reply_text, usage, files = run_experimental_turn(
-            context_messages, user_text, files=files, model_name=session.model_name
+            context_messages, user_text, files=files, model_name=session.model_name, session_id=session.id
         )
         if files_column:
             setattr(session, files_column, json.dumps(files))
