@@ -242,6 +242,7 @@ export const store = reactive({
   },
 
   async selectSession(id) {
+    this.skillManageOpen = false; // Test Agent 頁的 Skill Manage 畫面優先權比較高,選 session 前要先關掉
     this.currentSessionId = id;
     this.loadingMessages = true;
     this.sidebarOpen = false; // no-op on desktop; closes the mobile drawer after picking one
@@ -307,13 +308,17 @@ export const store = reactive({
   // 隨時可以點回去繼續(TestAgentView 的「New test session」按鈕、
   // Sidebar 抽屜的「+」都共用這個)。
   resetTestAgentSelection() {
+    this.skillManageOpen = false;
     this.currentSessionId = null;
     this.messages = [];
   },
 
-  // --- Skill Manage(見 SkillManageView.js)- test_agent 的 skill 內容全部
-  // 存在 Postgres(不是本地檔案),編輯/新增/刪除立刻對 test_agent 生效,
-  // 不用重新部署 - 見後端 app/agent/test_agent/skill_store.py。---
+  // --- Skill Manage(見 SkillManageView.js)- Test Agent 抽屜裡的一個入口,
+  // 不是獨立頁面,點了在 Test Agent 的主畫面展開(跟 Notes 頁的 Manage 是
+  // 同一種模式,見 Sidebar.js 的 openSkillManage/store.templateManageOpen)。
+  // skill 內容全部存在 Postgres(不是本地檔案),編輯/新增/刪除立刻對
+  // test_agent 生效,不用重新部署 - 見後端 app/agent/test_agent/skill_store.py。---
+  skillManageOpen: false,
   skillFiles: [], // [{fab, role, skill_name, updated_at}, ...]
 
   async loadSkillFiles() {

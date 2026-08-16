@@ -12,7 +12,6 @@ import NotesView from "./components/NotesView.js";
 import HotelSearchView from "./components/HotelSearchView.js";
 import ProfileView from "./components/ProfileView.js";
 import TestAgentView from "./components/TestAgentView.js";
-import SkillManageView from "./components/SkillManageView.js";
 import Notice from "./components/Notice.js";
 
 function loadAccountData() {
@@ -23,7 +22,7 @@ function loadAccountData() {
 }
 
 const App = {
-  components: { LoginView, Sidebar, HomeView, ChatView, WikiView, CalendarView, NewsView, NotesView, HotelSearchView, ProfileView, TestAgentView, SkillManageView, Notice },
+  components: { LoginView, Sidebar, HomeView, ChatView, WikiView, CalendarView, NewsView, NotesView, HotelSearchView, ProfileView, TestAgentView, Notice },
   setup() {
     store.initTheme();
     if (store.loggedIn) loadAccountData();
@@ -84,7 +83,6 @@ const App = {
     <HotelSearchView v-else-if="store.view === 'hotels'" />
     <ProfileView v-else-if="store.view === 'profile'" />
     <TestAgentView v-else-if="store.view === 'test-agent'" />
-    <SkillManageView v-else-if="store.view === 'skill-manage'" />
 
     <img class="corner-mascot" :src="cornerSrc" alt="" @error="onCornerImgError" @load="onCornerImgLoad" />
 

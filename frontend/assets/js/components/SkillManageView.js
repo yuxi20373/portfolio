@@ -119,7 +119,10 @@ export default {
   <div class="main-panel skill-manage-panel">
     <div class="skill-manage-toolbar">
       <h1 class="page-title" style="margin:0;">SKILL MANAGE</h1>
-      <button class="btn" @click="startNewSkill" v-html="icons.plus"></button>
+      <div class="row" style="gap:8px;">
+        <button class="btn" @click="startNewSkill" v-html="icons.plus"></button>
+        <button class="icon-btn" title="Back to Test Agent" @click="store.skillManageOpen = false" v-html="icons.close"></button>
+      </div>
     </div>
 
     <div class="skill-manage-body">

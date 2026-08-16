@@ -163,6 +163,15 @@ export default {
       if (!store.customEmoji.length) store.loadCustomEmoji();
     }
 
+    // Skill Manage 跟 Template Manage 是同一種模式 - 不是獨立頁面,是 Test
+    // Agent 抽屜裡的一個入口,點了在 Test Agent 的主畫面展開(見
+    // TestAgentView.js 的 store.skillManageOpen 分支)。
+    function openSkillManage() {
+      store.skillManageOpen = true;
+      store.closeSidebar();
+      store.loadSkillFiles();
+    }
+
     async function startFolderRename(group) {
       editingFolderId.value = group.id;
       editingFolderName.value = group.label;
@@ -220,6 +229,7 @@ export default {
       groupCollapsed,
       promptNewFolder,
       openTemplateManage,
+      openSkillManage,
       editingFolderId,
       editingFolderName,
       startFolderRename,
@@ -258,7 +268,6 @@ export default {
       <button class="icon-btn" :class="{active: store.view==='news'}" @click="setView('news')" title="News" v-html="icons.news"></button>
       <button class="icon-btn" :class="{active: store.view==='hotels'}" @click="setView('hotels')" title="Hotels" v-html="icons.hotel"></button>
       <button class="icon-btn" :class="{active: store.view==='test-agent'}" @click="setView('test-agent')" title="Test Agent" v-html="icons.target"></button>
-      <button class="icon-btn" :class="{active: store.view==='skill-manage'}" @click="setView('skill-manage')" title="Skill Manage" v-html="icons.sliders"></button>
     </div>
 
     <template v-if="store.view === 'chat'">
@@ -308,6 +317,13 @@ export default {
     </template>
 
     <template v-else-if="store.view === 'test-agent'">
+      <div class="session-item favorites-row" :class="{active: store.skillManageOpen}" @click="openSkillManage">
+        <span class="favorites-row-icon">
+          <span v-html="icons.sliders"></span>
+        </span>
+        <span class="session-title favorites-row-label">Skill Manage</span>
+      </div>
+
       <button class="icon-btn new-item-btn" title="New test session" @click="store.resetTestAgentSelection()" v-html="icons.plus"></button>
 
       <div class="session-list">

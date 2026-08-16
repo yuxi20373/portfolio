@@ -8,8 +8,10 @@ const { ref, computed, nextTick, watch, onMounted } = window.Vue;
 import { store } from "../store.js";
 import { renderMarkdown } from "../markdown.js";
 import { icons } from "../icons.js";
+import SkillManageView from "./SkillManageView.js";
 
 export default {
+  components: { SkillManageView },
   setup() {
     const draft = ref("");
     const chatWindow = ref(null);
@@ -114,7 +116,8 @@ export default {
     };
   },
   template: `
-  <div class="main-panel chat-panel test-agent-panel">
+  <SkillManageView v-if="store.skillManageOpen" />
+  <div v-else class="main-panel chat-panel test-agent-panel">
     <div class="test-agent-toolbar">
       <h1 class="page-title" style="margin:0;">TEST AGENT</h1>
       <button v-if="inTestSession" class="btn secondary" @click="newTestSession">New test session</button>
