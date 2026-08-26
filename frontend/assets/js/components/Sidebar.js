@@ -268,6 +268,7 @@ export default {
       <button class="icon-btn" :class="{active: store.view==='news'}" @click="setView('news')" title="News" v-html="icons.news"></button>
       <button class="icon-btn" :class="{active: store.view==='hotels'}" @click="setView('hotels')" title="Hotels" v-html="icons.hotel"></button>
       <button class="icon-btn" :class="{active: store.view==='test-agent'}" @click="setView('test-agent')" title="Test Agent" v-html="icons.target"></button>
+      <button class="icon-btn" :class="{active: store.view==='bash-reference'}" @click="setView('bash-reference')" title="Bash Reference" v-html="icons.terminal"></button>
     </div>
 
     <template v-if="store.view === 'chat'">

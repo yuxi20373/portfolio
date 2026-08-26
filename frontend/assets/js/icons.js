@@ -100,4 +100,5 @@ export const icons = {
 
   // 分享筆記按鈕(見 NotesView.js 編輯工具列)。
   send: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
+  terminal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><polyline points="7 9 11 12.5 7 16"/><line x1="12" y1="16" x2="17" y2="16"/></svg>`,
 };

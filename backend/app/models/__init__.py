@@ -7,6 +7,7 @@ from .emoji import CustomEmoji
 from .event import CalendarEvent
 from .airbnb_search import AirbnbSearch
 from .note_share import NoteShare
+from .bash_command import BashCommand
 
 __all__ = [
     "User",
@@ -26,4 +27,5 @@ __all__ = [
     "CalendarEvent",
     "AirbnbSearch",
     "NoteShare",
+    "BashCommand",
 ]

@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import models  # noqa: F401  (import registers models with Base.metadata)
 from .config import settings
-from .routers import auth, chat, wiki, calendar, search, notes, memos, weather, line, news, emoji, events, hotel_search, airbnb_search, profile, models as models_router, test_agent_skills
+from .routers import auth, chat, wiki, calendar, search, notes, memos, weather, line, news, emoji, events, hotel_search, airbnb_search, profile, models as models_router, test_agent_skills, bash_reference
 from .services.news import news_service
 
 # Schema is owned entirely by Alembic now (backend/alembic/) - there is no
@@ -47,6 +47,7 @@ app.include_router(airbnb_search.router)
 app.include_router(profile.router)
 app.include_router(models_router.router)
 app.include_router(test_agent_skills.router)
+app.include_router(bash_reference.router)
 
 # NOTE: Wiki entries are only ever created/updated on explicit user action -
 # via chat (the update_wiki agent tool), the Search panel, or the Adjust

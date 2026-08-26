@@ -1125,6 +1125,54 @@ textarea {
   gap: 8px;
 }
 
+/* Bash Reference 頁面(見 BashReferenceView.js)- 上半搜尋字典,下半貼整串
+   指令給 LLM 解析,兩個功能互不相關,各自一個 section。 */
+.bash-ref-panel {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.bash-ref-section {
+  margin-bottom: 28px;
+}
+
+.bash-ref-section h3 {
+  margin: 0 0 10px;
+}
+
+.bash-ref-results {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bash-ref-result {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.bash-ref-result-command {
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-weight: 600;
+  color: var(--accent-hover);
+}
+
+.bash-ref-result-desc {
+  margin-top: 4px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+.bash-ref-parse-result {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--white);
+}
+
 .chat-toolbar {
   display: flex;
   align-items: center;
